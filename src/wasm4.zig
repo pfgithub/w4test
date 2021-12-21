@@ -1,6 +1,10 @@
 //
 // WASM-4: https://wasm4.org/docs
 
+pub const Vec2 = @import("std").meta.Vector(2, i32);
+pub const x = 0;
+pub const y = 1;
+
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
 // │ Platform Constants                                                        │
@@ -17,26 +21,59 @@ pub const CANVAS_SIZE: u32 = 160;
 
 pub const PALETTE: *[4]u32 = @intToPtr(*[4]u32, 0x04);
 pub const DRAW_COLORS: *u16 = @intToPtr(*u16, 0x14);
-pub const GAMEPAD1: *const u8 = @intToPtr(*const u8, 0x16);
-pub const GAMEPAD2: *const u8 = @intToPtr(*const u8, 0x17);
-pub const GAMEPAD3: *const u8 = @intToPtr(*const u8, 0x18);
-pub const GAMEPAD4: *const u8 = @intToPtr(*const u8, 0x19);
-pub const MOUSE_X: *const i16 = @intToPtr(*const i16, 0x1a);
-pub const MOUSE_Y: *const i16 = @intToPtr(*const i16, 0x1c);
-pub const MOUSE_BUTTONS: *const u8 = @intToPtr(*const u8, 0x1e);
-pub const SYSTEM_FLAGS: *u8 = @intToPtr(*u8, 0x1f);
+pub const GAMEPAD1: *const Gamepad = @intToPtr(*const Gamepad, 0x16);
+pub const GAMEPAD2: *const Gamepad = @intToPtr(*const Gamepad, 0x17);
+pub const GAMEPAD3: *const Gamepad = @intToPtr(*const Gamepad, 0x18);
+pub const GAMEPAD4: *const Gamepad = @intToPtr(*const Gamepad, 0x19);
+
+pub const MOUSE: *const Mouse = @intToPtr(*const Mouse, 0x1a);
+pub const SYSTEM_FLAGS: *SystemFlags = @intToPtr(*SystemFlags, 0x1f);
 pub const FRAMEBUFFER: *[6400]u8 = @intToPtr(*[6400]u8, 0xA0);
 
-pub const BUTTON_1: u8 = 1;
-pub const BUTTON_2: u8 = 2;
-pub const BUTTON_LEFT: u8 = 16;
-pub const BUTTON_RIGHT: u8 = 32;
-pub const BUTTON_UP: u8 = 64;
-pub const BUTTON_DOWN: u8 = 128;
+pub const Gamepad = packed struct {
+    button_1: bool,
+    button_2: bool,
+    unused_1: u1,
+    unused_2: u1,
+    button_left: bool,
+    button_right: bool,
+    button_up: bool,
+    button_down: bool,
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+    }
+};
 
-pub const MOUSE_LEFT: u8 = 1;
-pub const MOUSE_RIGHT: u8 = 2;
-pub const MOUSE_MIDDLE: u8 = 4;
+pub const Mouse = packed struct {
+    x: i16,
+    y: i16,
+    buttons: MouseButtons,
+    pub fn pos(mouse: Mouse) Vec2 {
+        return .{mouse.x, mouse.y};
+    }
+    comptime {
+        if(@sizeOf(@This()) != 5) unreachable;
+    }
+};
+
+pub const MouseButtons = packed struct {
+    left: bool,
+    right: bool,
+    middle: bool,
+    unused: u5,
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+    }
+};
+
+pub const SystemFlags = packed struct {
+    preserve_framebuffer: bool,
+    hide_gamepad_overlay: bool,
+    unused: u6,
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+    }
+};
 
 pub const SYSTEM_PRESERVE_FRAMEBUFFER: u8 = 1;
 pub const SYSTEM_HIDE_GAMEPAD_OVERLAY: u8 = 2;
@@ -47,35 +84,68 @@ pub const SYSTEM_HIDE_GAMEPAD_OVERLAY: u8 = 2;
 // │                                                                           │
 // └───────────────────────────────────────────────────────────────────────────┘
 
+pub const externs = struct {
+    pub extern fn blit(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, flags: u32) void;
+    pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, src_x: u32, src_y: u32, strie: i32, flags: u32) void;
+    pub extern fn line(x1: i32, y1: i32, x2: i32, y2: i32) void;
+    pub extern fn oval(x: i32, y: i32, width: i32, height: i32) void;
+    pub extern fn rect(x: i32, y: i32, width: i32, height: i32) void;
+    pub extern fn textUtf8(strPtr: [*]const u8, strLen: usize, x: i32, y: i32) void;
+
+    /// Draws a vertical line
+    extern fn vline(x: i32, y: i32, len: u32) void;
+
+    /// Draws a horizontal line
+    extern fn hline(x: i32, y: i32, len: u32) void;
+
+    pub extern fn tone(frequency: u32, duration: u32, volume: u32, flags: u32) void;
+};
+
 /// Copies pixels to the framebuffer.
-pub extern fn blit(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, flags: u32) void;
+pub fn blit(sprite: []const u8, pos: Vec2, size: Vec2, flags: BlitFlags) void {
+    if(sprite.len * 8 != size[x] * size[y]) unreachable;
+    externs.blit(sprite.ptr, pos[x], pos[y], size[x], size[y], @bitCast(u32, flags));
+}
 
 /// Copies a subregion within a larger sprite atlas to the framebuffer.
-pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, src_x: u32, src_y: u32, strie: i32, flags: u32) void;
+pub fn blitSub(sprite: []const u8, pos: Vec2, size: Vec2, src: Vec2, strie: i32, flags: BlitFlags) void {
+    if(sprite.len * 8 != size[x] * size[y]) unreachable;
+    externs.blitSub(sprite.ptr, pos[x], pos[y], size[x], size[y], src[x], src[y], strie, @bitCast(u32, flags));
+}
 
-pub const BLIT_2BPP: u32 = 1;
-pub const BLIT_1BPP: u32 = 0;
-pub const BLIT_FLIP_X: u32 = 2;
-pub const BLIT_FLIP_Y: u32 = 4;
-pub const BLIT_ROTATE: u32 = 8;
+pub const BlitFlags = packed struct {
+    bpp: enum(u1) {
+        b1,
+        b2,
+    },
+    flip_x: bool = false,
+    flip_y: bool = false,
+    rotate: bool = false,
+    unused: u28 = 0,
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
+    }
+};
 
 /// Draws a line between two points.
-pub extern fn line(x1: i32, y1: i32, x2: i32, y2: i32) void;
+pub fn line(pos1: Vec2, pos2: Vec2) void {
+    externs.line(pos1[x], pos1[y], pos2[x], pos2[y]);
+}
 
 /// Draws an oval (or circle).
-pub extern fn oval(x: i32, y: i32, width: i32, height: i32) void;
+pub fn oval(ul: Vec2, size: Vec2) void {
+    externs.oval(ul[x], ul[y], size[x], size[y]);
+}
 
 /// Draws a rectangle.
-pub extern fn rect(x: i32, y: i32, width: u32, height: u32) void;
+pub fn rect(ul: Vec2, size: Vec2) void {
+    externs.rect(ul[x], ul[y], size[x], size[y]);
+}
 
 /// Draws text using the built-in system font.
-pub extern fn text(str: [*]const u8, x: i32, y: i32) void;
-
-/// Draws a vertical line
-pub extern fn vline(x: i32, y: i32, len: u32) void;
-
-/// Draws a horizontal line
-pub extern fn hline(x: i32, y: i32, len: u32) void;
+pub fn text(str: []const u8, pos: Vec2) void {
+    externs.textUtf8(str.ptr, str.len, pos[x], pos[y]);
+}
 
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
@@ -84,16 +154,30 @@ pub extern fn hline(x: i32, y: i32, len: u32) void;
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /// Plays a sound tone.
-pub extern fn tone(frequency: u32, duration: u32, volume: u32, flags: u32) void;
 
-pub const TONE_PULSE1: u32 = 0;
-pub const TONE_PULSE2: u32 = 1;
-pub const TONE_TRIANGLE: u32 = 2;
-pub const TONE_NOISE: u32 = 3;
-pub const TONE_MODE1: u32 = 0;
-pub const TONE_MODE2: u32 = 4;
-pub const TONE_MODE3: u32 = 8;
-pub const TONE_MODE4: u32 = 12;
+pub fn tone(frequency: u32, duration: u32, volume: u32, flags: ToneFlags) void {
+    return externs.tone(frequency, duration, volume, @bitCast(u8, flags));
+}
+
+pub const ToneFlags = packed struct {
+    style: enum(u2) {
+        pulse1,
+        pulse2,
+        triangle,
+        noise,
+    },
+    mode: enum(u2) {
+        mode1,
+        mode2,
+        mode3,
+        mode4,
+    } = .mode1,
+    unused: u4 = 0,
+    // unused: u28 = 0,
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+    }
+};
 
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
