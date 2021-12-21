@@ -33,8 +33,7 @@ pub const FRAMEBUFFER: *[6400]u8 = @intToPtr(*[6400]u8, 0xA0);
 pub const Gamepad = packed struct {
     button_1: bool,
     button_2: bool,
-    unused_1: u1,
-    unused_2: u1,
+    _: u2 = 0,
     button_left: bool,
     button_right: bool,
     button_up: bool,
@@ -60,7 +59,7 @@ pub const MouseButtons = packed struct {
     left: bool,
     right: bool,
     middle: bool,
-    unused: u5,
+    _: u5 = 0,
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
@@ -69,7 +68,7 @@ pub const MouseButtons = packed struct {
 pub const SystemFlags = packed struct {
     preserve_framebuffer: bool,
     hide_gamepad_overlay: bool,
-    unused: u6,
+    _: u6 = 0,
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
@@ -121,7 +120,7 @@ pub const BlitFlags = packed struct {
     flip_x: bool = false,
     flip_y: bool = false,
     rotate: bool = false,
-    unused: u28 = 0,
+    _: u28 = 0,
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
     }
@@ -172,8 +171,7 @@ pub const ToneFlags = packed struct {
         mode3,
         mode4,
     } = .mode1,
-    unused: u4 = 0,
-    // unused: u28 = 0,
+    _: u4 = 0,
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
