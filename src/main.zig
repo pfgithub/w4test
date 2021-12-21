@@ -11,6 +11,10 @@ const smiley = [8]u8{
     0b11000011,
 };
 
+var state: struct {
+    start: ?w4.Vec2 = null,
+} = .{};
+
 export fn update() void {
     w4.DRAW_COLORS.* = 2;
     w4.text("Hello from Zig!", .{10, 10});
@@ -24,6 +28,12 @@ export fn update() void {
     }
 
     const mouse = w4.MOUSE;
+    if(mouse.buttons.left) {
+        if(state.start == null) state.start = mouse.pos();
+        w4.line(state.start.?, mouse.pos());
+    }else{
+        state.start = null;
+    }
 
     w4.blit(&smiley, mouse.pos(), .{8, 8}, .{.bpp = .b1});
     w4.text("Press X to blink", .{16, 90});
