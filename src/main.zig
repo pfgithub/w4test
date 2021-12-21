@@ -16,19 +16,22 @@ var state: struct {
 } = .{};
 
 export fn update() void {
-    w4.DRAW_COLORS.* = 2;
+    w4.DRAW_COLORS.* = 0x2;
     w4.text("Hello from Zig!", .{10, 10});
 
     const gamepad = w4.GAMEPAD1.*;
     if (gamepad.button_1) {
-        w4.DRAW_COLORS.* = 4;
-        w4.tone(262, 1, 100, .{
+        w4.DRAW_COLORS.* = 0x4;
+        w4.tone(262, 2, 100, .{
             .style = .pulse1,
         });
     }
 
+    w4.text("Press X to blink", .{16, 90});
+
     const mouse = w4.MOUSE;
     if(mouse.buttons.left) {
+        w4.DRAW_COLORS.* = 0x3;
         if(state.start == null) state.start = mouse.pos();
         w4.line(state.start.?, mouse.pos());
     }else{
@@ -36,7 +39,6 @@ export fn update() void {
     }
 
     w4.blit(&smiley, mouse.pos(), .{8, 8}, .{.bpp = .b1});
-    w4.text("Press X to blink", .{16, 90});
 
     _ = w4.Mouse;
     _ = w4.Gamepad;
