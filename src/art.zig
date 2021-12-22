@@ -87,7 +87,7 @@ const Canvas = struct {
 };
 
 const Border = struct {
-    color: u16,
+    color: u16, // this should represent the four colors top right bottom left.
     widget: Widget,
 
     pub fn place(props: @This()) Widget {
