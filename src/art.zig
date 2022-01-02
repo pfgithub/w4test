@@ -402,6 +402,19 @@ const VSplitEqual = struct {
 //     }
 //   }
 // }
+//
+// …
+//
+// Button.init(.{
+//   .content = Label.init(.{
+//      .text = "hi!",
+//   }),
+//   .onclick = callback(SomeStruct{…}),
+// })
+//
+// ok i might end up needing @src() for internal state
+// hoping to avoid that as long as I can, but I'm probably
+// going to eventually need consistent ids
 
 var buffer: [1000]u8 = undefined;
 
