@@ -471,4 +471,12 @@ export fn update() void {
     // j(Border{
     //     .widget = j(Canvas{}),
     // }).render(.{5, 5});
+
+    for([_]*const w4.Gamepad{w4.GAMEPAD1, w4.GAMEPAD2}) |gp, i| {
+        w4.DRAW_COLORS.* = 0x31;
+        const printed = std.fmt.allocPrint(arena.?, "[{}]", .{
+            gp,
+        }) catch @panic("oom");
+        w4.text(printed, .{5, @intCast(i32, i) * 10 + 5});
+    }
 }

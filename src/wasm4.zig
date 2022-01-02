@@ -41,6 +41,15 @@ pub const Gamepad = packed struct {
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
+
+    pub fn format(value: @This(), comptime _: []const u8, _: @import("std").fmt.FormatOptions, writer: anytype) !void {
+        if(value.button_1) try writer.writeAll("1");
+        if(value.button_2) try writer.writeAll("2");
+        if(value.button_left) try writer.writeAll("<");//"←");
+        if(value.button_right) try writer.writeAll(">");
+        if(value.button_up) try writer.writeAll("^");
+        if(value.button_down) try writer.writeAll("v");
+    }
 };
 
 pub const Mouse = packed struct {
@@ -196,4 +205,4 @@ pub extern fn diskw(src: [*]const u8, size: u32) u32;
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /// Prints a message to the debug console.
-pub extern fn trace(x: [*]const u8) void;
+pub extern fn trace(x: [*:0]const u8) void;
