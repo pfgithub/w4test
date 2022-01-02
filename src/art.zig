@@ -330,6 +330,21 @@ const VSplitEqual = struct {
 // a bit why it's actually three. like I know you need three for buttons but this doesn't
 // feel like it should need three.
 
+//
+//
+// ok thinking about sample projects
+// i feel like a user interface builder would be a neat sample
+// so we need:
+//
+// - ok so the ui builder needs to let us build components
+// - ::
+//
+// we want a screen where the ui stuff goes
+// we want a panel with all your other components and all the default components
+// we want an options panel
+//
+// have to be able to click and drag new components onto your view
+
 var buffer: [1000]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
