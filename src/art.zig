@@ -345,6 +345,64 @@ const VSplitEqual = struct {
 //
 // have to be able to click and drag new components onto your view
 
+// ok i want a test ui to start
+//
+// we'll need to consider these items:
+//
+// - clicking
+// - tabindexing
+// - scrolling + virtualized scrolling
+// - component state (local, temporary) vs application state (centralized, persistent)
+//
+// ok so a possible next step would be doing a text component and then a button component
+//
+// and with a button we'll have to figure out interaction. we have choices:
+// - callback-based
+// - key-based + rerenders
+// probably better to do callback-based tbh
+//
+// Window{
+//   .title = "View",
+//   Canvas{}
+// }
+// Window{
+//   .title = "Hierarchy",
+//   HierarchyView{}
+// }
+// Window{
+//   .title = "Inspector",
+//   InspectorView{
+//     // display a different thing based on the selected item in the view
+//   }
+// }
+// Window{
+//   .title = "Components",
+//   ListView{
+//     // virtualized list of components
+//     ListItem{
+//       .icon = "button icon",
+//       .ondrag = …,
+//       .content = {
+//         Text{"Button", bold, role=heading}
+//         Text{"a thing a person can click", role=description}
+//       },
+//     }
+//   }
+// }
+//
+// DefaultView{
+//   HSplit {
+//     Window("View")
+//     VSplit {
+//       Window("Hierarchy")
+//       Tabs {
+//         Window("Inspector")
+//         Window("Components")
+//       }
+//     }
+//   }
+// }
+
 var buffer: [1000]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
