@@ -415,6 +415,10 @@ const VSplitEqual = struct {
 // ok i might end up needing @src() for internal state
 // hoping to avoid that as long as I can, but I'm probably
 // going to eventually need consistent ids
+//
+// oh here's a sample app we could do
+// a file explorer
+// pretty simple and uses some common ui components
 
 var buffer: [1000]u8 = undefined;
 
