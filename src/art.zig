@@ -55,9 +55,9 @@ var ui: VisualState = .{
 // j(renderBorder, )
 
 const Canvas = struct {
-    pub const init = autoInit(@This());
+    pub const init = autoInit(@This(), RectElement);
 
-    pub fn size(_: Canvas, constraints: Constraints) SizedElement {
+    pub fn size(_: Canvas, constraints: RectConstraints) RectSizedElement {
         // use up all available space
         return CanvasRender.from(.{
             .width = constraints.max_width,
@@ -68,7 +68,7 @@ const Canvas = struct {
         });
     }
     pub const CanvasRender = struct {
-        pub const from = autoFrom(@This());
+        pub const from = autoFrom(@This(), RectSizedElement);
 
         width: i32,
         height: i32,
@@ -88,20 +88,27 @@ const Canvas = struct {
     };
 };
 
-const SizedElement = struct {
-    size: w4.Vec2,
+pub fn SizedElement(comptime Size: type, comptime Position: type) type {
+    return struct {
+        size: Size,
 
-    render_fn: fn(data: usize, offset: w4.Vec2) void,
-    render_data: usize,
-    fn render(self: @This(), offset: w4.Vec2) void {
-        self.render_fn(self.render_data, offset);
-    }
-};
+        render_fn: fn(data: usize, offset: Position) void,
+        render_data: usize,
+        fn render(self: @This(), offset: Position) void {
+            self.render_fn(self.render_data, offset);
+        }
+    };
+}
 
-const Constraints = struct {
+pub const RectConstraints = struct {
     max_width: i32,
     max_height: i32,
 };
+pub const RectSize = w4.Vec2;
+pub const RectPosition = w4.Vec2;
+
+pub const RectSizedElement = SizedElement(RectSize, RectPosition);
+pub const RectElement = Element(RectConstraints, RectSizedElement);
 
 // TODO:
 // fn Element(comptime Constraints: type, comptime Size: type) type {…}
@@ -110,17 +117,23 @@ const Constraints = struct {
 // fn SizedElement(comptime Size: type, comptime Poition: type) type {…}
 // SizedElement(w4.Vec2, w4.Vec2)
 
-const Element = struct {
-    size_fn: fn(data: usize, constraints: Constraints) SizedElement,
-    size_data: usize, // *const anyopaque // ?
-    fn size(self: @This(), constraints: Constraints) SizedElement {
-        return self.size_fn(self.size_data, constraints);
-    }
-};
+pub fn Element(comptime ConstraintsIn: type, comptime SpecializedSizedElement: type) type {
+    return struct {
+        const Self = @This();
+        pub const Sized = SpecializedSizedElement;
+        pub const Constraints = ConstraintsIn;
 
-fn autoFrom(comptime This: type) fn(value: This, size: w4.Vec2) SizedElement {
+        size_fn: fn(data: usize, constraints: Constraints) SpecializedSizedElement,
+        size_data: usize, // *const anyopaque // ?
+        pub fn size(self: @This(), constraints: Constraints) SpecializedSizedElement {
+            return self.size_fn(self.size_data, constraints);
+        }
+    };
+}
+
+fn autoFrom(comptime This: type, comptime SpecializedSizedElement: type) fn(value: This, size: w4.Vec2) SpecializedSizedElement {
     const result = opaque {
-        pub fn from(value: This, size: w4.Vec2) SizedElement {
+        pub fn from(value: This, size: w4.Vec2) SpecializedSizedElement {
             const dupe = arena.?.create(This) catch unreachable;
             dupe.* = value;
             return .{
@@ -155,13 +168,13 @@ comptime {
     if(@sizeOf(*u0) != 0) @panic("remove those functions, the bug was fixed");
 }
 
-fn autoInit(comptime This: type) fn(props: This) Element {
+fn autoInit(comptime This: type, comptime SpecializedElement: type) fn(props: This) SpecializedElement {
     const result = opaque {
-        pub fn j(props: This) Element {
+        pub fn j(props: This) SpecializedElement {
             const dupe = arena.?.create(This) catch unreachable;
             dupe.* = props;
             return .{
-                .size_fn = struct{fn f(data: usize, constraints: Constraints) SizedElement {
+                .size_fn = struct{fn f(data: usize, constraints: SpecializedElement.Constraints) SpecializedElement.Sized {
                     const props_inner = intToPtrFix(*const This, data);
                     return props_inner.size(constraints);
                 }}.f,
@@ -174,11 +187,11 @@ fn autoInit(comptime This: type) fn(props: This) Element {
 
 const Border = struct {
     color: u16, // this should represent the four colors top right bottom left.
-    child: Element,
+    child: RectElement,
 
-    pub const init = autoInit(@This());
+    pub const init = autoInit(@This(), RectElement);
 
-    pub fn size(border: Border, constraints: Constraints) SizedElement {
+    pub fn size(border: Border, constraints: RectConstraints) RectSizedElement {
         // give all available space - 2px to child,
         // return space used by child + 2px
         const content = border.child.size(.{
@@ -202,9 +215,9 @@ const Border = struct {
     // yeah you can do size(…) … {return j(…).size(…);}
     const BorderRender = struct {
         color: u16,
-        child: SizedElement,
+        child: RectSizedElement,
 
-        pub const from = autoFrom(@This());
+        pub const from = autoFrom(@This(), RectSizedElement);
 
         pub fn render(props: @This(), offset: w4.Vec2) void {
             props.child.render(w4.Vec2{1, 1} + offset);
