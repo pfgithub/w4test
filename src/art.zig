@@ -103,6 +103,14 @@ pub fn SizedElement(comptime Size: type, comptime Position: type) type {
 pub const RectConstraints = struct {
     max_width: i32,
     max_height: i32,
+    // oh I'd forgotten why I had these at ?i32 instead of i32
+    // the answer: overflow
+    // like if you have a scroll container, what's the max_height inside it?
+    // trick question, it's null.
+    //
+    // so maybe we should either allow null here and have individual components
+    // decide if they allow it or not, or we should have a seperate version for
+    // items with no max height
 };
 pub const RectSize = w4.Vec2;
 pub const RectPosition = w4.Vec2;
@@ -228,6 +236,76 @@ const Border = struct {
     };
 };
 
+/// a vsplit but all the spaces are sized at 1fr
+/// eventually we'll have a nice one that supports:
+/// - fr values
+/// - max-content
+/// - pixel values (spooky, be careful)
+/// - scrolling, including virtualized scrolling
+const VSplitEqual = struct {
+    pub const Child = RectElement; // eventually this could be:
+    // struct {size: VseSize, element: RectSizedElement};
+    children: []Child,
+
+    pub const init = autoInit(@This(), RectElement);
+
+    pub fn size(vse: @This(), constraints: RectConstraints) RectSizedElement {
+        const children = arena.?.alloc(RectSizedElement, vse.children.len) catch unreachable;
+
+        // 1. calculate sizes of all max-content values
+        // // (we're skipping max-content for now and just assuming all children are 1fr)
+        // for(vse.children) |child| {
+        //
+        // }
+
+        // 2. divy up remaining space amongst fr values
+        const remaining_units = vse.children.len;
+        if(remaining_units > 0) {
+            const space_per_unit = std.math.lossyCast(usize, constraints.max_height) / remaining_units;
+            const extras_before_unit_index = std.math.lossyCast(usize, constraints.max_height) % remaining_units;
+            for(vse.children) |child, i| {
+                const height = std.math.lossyCast(isize,
+                    space_per_unit + @as(u1, if(i < extras_before_unit_index) 1 else 0)
+                );
+
+                const sized = child.size(.{
+                    .max_width = constraints.max_width,
+                    .max_height = height,
+                });
+                // if(sized.size[w4.y] != constraints.max_width) warnOnce(@src(), "bad");
+                // - note: there may be a way to do this at compile-time. like specify
+                //   that an element always uses the full width available to it.
+                children[i] = sized;
+            }
+        }
+
+        // 3. return final value
+        return VSplitEqualRender.from(.{
+            .children = children,
+        }, .{
+            constraints.max_width,
+            blk: {var total_height: i32 = 0; for(children) |child| {
+                total_height += child.size[w4.y];
+            } break :blk total_height;},
+        });
+    }
+
+    const VSplitEqualRender = struct {
+        children: []RectSizedElement,
+
+        pub const from = autoFrom(@This(), RectSizedElement);
+
+        pub fn render(props: @This(), offset: w4.Vec2) void {
+            var yp: isize = 0;
+
+            for(props.children) |child| {
+                child.render(offset + w4.Vec2{0, yp});
+                yp += child.size[w4.y];
+            }
+        }
+    };
+};
+
 // ok right I have this above but I'll write it again because I'm coming back
 // to this and forgot why we need three stages
 //
@@ -257,7 +335,7 @@ var buffer: [1000]u8 = undefined;
 var arena: ?std.mem.Allocator = null;
 
 export fn start() void {
-    //
+    // initialize stuff
 }
 
 export fn update() void {
@@ -270,9 +348,18 @@ export fn update() void {
 
     w4.rect(.{0, 0}, .{w4.CANVAS_SIZE, w4.CANVAS_SIZE});
 
-    Border.init(.{
-        .color = 0x3333,
-        .child = Canvas.init(.{}),
+    VSplitEqual.init(.{
+        .children = &[_]VSplitEqual.Child{
+            Border.init(.{
+                .color = 0x3333,
+                .child = Canvas.init(.{}),
+            }),
+            Canvas.init(.{}),
+            Border.init(.{
+                .color = 0x3333,
+                .child = Canvas.init(.{}),
+            }),
+        },
     }).size(.{
         .max_width = w4.CANVAS_SIZE,
         .max_height = w4.CANVAS_SIZE,
