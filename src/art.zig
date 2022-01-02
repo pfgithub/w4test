@@ -338,6 +338,11 @@ export fn start() void {
     // initialize stuff
 }
 
+var window_state: struct {
+    click_pos: ?w4.Vec2 = null,
+    size: w4.Vec2 = w4.Vec2{w4.CANVAS_SIZE, w4.CANVAS_SIZE},
+} = .{};
+
 export fn update() void {
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
     arena = fba.allocator();
@@ -347,6 +352,13 @@ export fn update() void {
     w4.DRAW_COLORS.* = 0x22;
 
     w4.rect(.{0, 0}, .{w4.CANVAS_SIZE, w4.CANVAS_SIZE});
+
+    if(w4.MOUSE.buttons.left) {
+        if(window_state.click_pos) |click_pos| window_state.size += w4.Vec2{w4.MOUSE.x, w4.MOUSE.y} - click_pos;
+        window_state.click_pos = w4.Vec2{w4.MOUSE.x, w4.MOUSE.y};
+    }else{
+        window_state.click_pos = null;
+    }
 
     VSplitEqual.init(.{
         .children = &[_]VSplitEqual.Child{
@@ -361,8 +373,8 @@ export fn update() void {
             }),
         },
     }).size(.{
-        .max_width = w4.CANVAS_SIZE,
-        .max_height = w4.CANVAS_SIZE,
+        .max_width = window_state.size[w4.x],
+        .max_height = window_state.size[w4.y],
     }).render(.{0, 0});
     // j(Canvas{}).render(.{5, 5});
 
