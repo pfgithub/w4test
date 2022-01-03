@@ -30,26 +30,35 @@ export fn update() void {
         w4.text(printed, .{5, @intCast(i32, i) * 10 + 5});
     }
 
-    const keys = if(w4.GAMEPAD1.button_down) (
+    const keys_opt: ?*const [7]f32 = if(w4.GAMEPAD1.button_left) (
         keys_c[0..][0..7]
-    ) else if(w4.GAMEPAD1.button_up) (
+    ) else if(w4.GAMEPAD1.button_right) (
         keys_c[14..][0..7]
-    ) else (
+    ) else if(true) (
         keys_c[7..][0..7]
-    );
+    ) else null;
 
-    for([7]bool{
-        w4.GAMEPAD2.button_2,
-        w4.GAMEPAD2.button_left,
-        w4.GAMEPAD2.button_up,
-        w4.GAMEPAD2.button_down,
-        w4.GAMEPAD2.button_right,
-        w4.GAMEPAD1.button_2,
-        w4.GAMEPAD1.button_1,
-    }) |key, i| {
-        if(key) w4.tone(@floatToInt(u32, keys[i]), 4, 100, .{
-            .style = .pulse1,
-        });
+    if(keys_opt) |keys| {
+
+        var style: w4.ToneFlags.Style = .pulse1;
+
+        for([7]bool{
+            w4.GAMEPAD2.button_2,
+            w4.GAMEPAD2.button_left,
+            w4.GAMEPAD2.button_up,
+            w4.GAMEPAD2.button_down,
+            w4.GAMEPAD2.button_right,
+            w4.GAMEPAD1.button_2,
+            w4.GAMEPAD1.button_1,
+        }) |key, i| {
+            if(key) {
+                w4.tone(@floatToInt(u32, keys[i]), 4, 100, .{
+                    .style = style,
+                });
+                style = .pulse2;
+            }
+        }
+
     }
 }
 

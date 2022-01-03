@@ -168,12 +168,13 @@ pub fn tone(frequency: u32, duration: u32, volume: u32, flags: ToneFlags) void {
 }
 
 pub const ToneFlags = packed struct {
-    style: enum(u2) {
+    pub const Style = enum(u2) {
         pulse1,
         pulse2,
         triangle,
         noise,
-    },
+    };
+    style: Style,
     mode: enum(u2) {
         mode1,
         mode2,
