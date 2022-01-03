@@ -39,8 +39,7 @@ export fn update() void {
     ) else null;
 
     if(keys_opt) |keys| {
-
-        var style: w4.ToneFlags.Style = .pulse1;
+        var channel: w4.ToneFlags.Channel = .pulse1;
 
         for([7]bool{
             w4.GAMEPAD2.button_2,
@@ -58,14 +57,17 @@ export fn update() void {
                     .sustain = 4,
                     .release = 4,
                 }, 100, .{
-                    .style = style,
+                    .channel = channel,
                     .mode = .p25,
                 });
-                style = .pulse2;
+                channel = .pulse2;
             }
         }
-
     }
+
+    // if(w4.MOUSE.buttons.left) {
+    // w4.tone(.{ .start = 262 }, .{ .sustain = 60, .release = 30 }, 100, .{ .channel = .pulse1 });
+    // }
 }
 
 const keys_c = &[_]f32{

@@ -163,10 +163,10 @@ pub fn text(str: []const u8, pos: Vec2) void {
 
 /// Plays a sound tone.
 
+/// Plays a sound tone.
 pub fn tone(frequency: ToneFrequency, duration: ToneDuration, volume: u32, flags: ToneFlags) void {
     return externs.tone(@bitCast(u32, frequency), @bitCast(u32, duration), volume, @bitCast(u8, flags));
 }
-
 pub const ToneFrequency = packed struct {
     start: u16,
     end: u16 = 0,
@@ -188,20 +188,23 @@ pub const ToneDuration = packed struct {
 };
 
 pub const ToneFlags = packed struct {
-    pub const Style = enum(u2) {
+    pub const Channel = enum(u2) {
         pulse1,
         pulse2,
         triangle,
         noise,
     };
-    style: Style,
-    mode: enum(u2) {
+    pub const Mode = enum(u2) {
         p12_5,
         p25,
         p50,
         p75,
-    } = .p12_5,
+    };
+
+    channel: Channel,
+    mode: Mode = .p12_5,
     _: u4 = 0,
+
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
