@@ -54,7 +54,10 @@ export fn update() void {
             if(key) {
                 w4.tone(.{
                     .start = @floatToInt(u16, keys[i]),
-                }, 4, 100, .{
+                }, .{
+                    .sustain = 4,
+                    .release = 4,
+                }, 100, .{
                     .style = style,
                     .mode = .p25,
                 });

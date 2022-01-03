@@ -163,13 +163,24 @@ pub fn text(str: []const u8, pos: Vec2) void {
 
 /// Plays a sound tone.
 
-pub fn tone(frequency: ToneFrequency, duration: u32, volume: u32, flags: ToneFlags) void {
-    return externs.tone(@bitCast(u32, frequency), duration, volume, @bitCast(u8, flags));
+pub fn tone(frequency: ToneFrequency, duration: ToneDuration, volume: u32, flags: ToneFlags) void {
+    return externs.tone(@bitCast(u32, frequency), @bitCast(u32, duration), volume, @bitCast(u8, flags));
 }
 
 pub const ToneFrequency = packed struct {
     start: u16,
     end: u16 = 0,
+
+    comptime {
+        if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
+    }
+};
+
+pub const ToneDuration = packed struct {
+    sustain: u8,
+    release: u8 = 0,
+    decay: u8 = 0,
+    attack: u8 = 0,
 
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
