@@ -54,6 +54,7 @@ export fn update() void {
             if(key) {
                 w4.tone(@floatToInt(u32, keys[i]), 4, 100, .{
                     .style = style,
+                    .mode = .p25,
                 });
                 style = .pulse2;
             }

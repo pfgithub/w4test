@@ -176,11 +176,11 @@ pub const ToneFlags = packed struct {
     };
     style: Style,
     mode: enum(u2) {
-        mode1,
-        mode2,
-        mode3,
-        mode4,
-    } = .mode1,
+        p12_5,
+        p25,
+        p50,
+        p75,
+    } = .p12_5,
     _: u4 = 0,
     comptime {
         if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
