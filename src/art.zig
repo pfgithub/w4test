@@ -420,7 +420,7 @@ const VSplitEqual = struct {
 // a file explorer
 // pretty simple and uses some common ui components
 
-var buffer: [1000]u8 = undefined;
+var buffer: [500]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
 
@@ -475,6 +475,20 @@ export fn update() void {
 
     // display the ram in the framebuffer because why not
     if(true) {
-        std.mem.copy(u8, w4.FRAMEBUFFER, &buffer);
+        for(buffer) |byte, i| {
+            w4.FRAMEBUFFER[i * 2] = (
+                (((byte >> 0) & (0b1 << 0)) * (0b11 << 0)) |
+                (((byte >> 0) & (0b1 << 1)) * (0b11 << 1)) |
+                (((byte >> 0) & (0b1 << 2)) * (0b11 << 2)) |
+                (((byte >> 0) & (0b1 << 3)) * (0b11 << 3)) |
+            0);
+            w4.FRAMEBUFFER[i * 2 + 1] = (
+                (((byte >> 4) & (0b1 << 0)) * (0b11 << 0)) |
+                (((byte >> 4) & (0b1 << 1)) * (0b11 << 1)) |
+                (((byte >> 4) & (0b1 << 2)) * (0b11 << 2)) |
+                (((byte >> 4) & (0b1 << 3)) * (0b11 << 3)) |
+            0);
+        }
+        //std.mem.copy(u8, w4.FRAMEBUFFER, &buffer);
     }
 }
