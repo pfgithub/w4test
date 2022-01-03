@@ -52,7 +52,9 @@ export fn update() void {
             w4.GAMEPAD1.button_1,
         }) |key, i| {
             if(key) {
-                w4.tone(@floatToInt(u32, keys[i]), 4, 100, .{
+                w4.tone(.{
+                    .start = @floatToInt(u16, keys[i]),
+                }, 4, 100, .{
                     .style = style,
                     .mode = .p25,
                 });
