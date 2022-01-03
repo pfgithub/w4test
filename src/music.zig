@@ -64,10 +64,6 @@ export fn update() void {
             }
         }
     }
-
-    // if(w4.MOUSE.buttons.left) {
-    // w4.tone(.{ .start = 262 }, .{ .sustain = 60, .release = 30 }, 100, .{ .channel = .pulse1 });
-    // }
 }
 
 const keys_c = &[_]f32{
