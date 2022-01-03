@@ -472,4 +472,9 @@ export fn update() void {
     // j(Border{
     //     .widget = j(Canvas{}),
     // }).render(.{5, 5});
+
+    // display the ram in the framebuffer because why not
+    if(true) {
+        std.mem.copy(u8, w4.FRAMEBUFFER, &buffer);
+    }
 }
