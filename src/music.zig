@@ -224,7 +224,7 @@ const Settings = extern struct {
     // the same across compiler versions.
     round_l: bool = false,
     round_r: bool = false,
-    shift: usize = 3, // 0 = A, 1 = B, 2 = C, …
+    shift: usize = 2, // 0 = A, 1 = B, 2 = C, …
 };
 fn getSettings() Settings {
     // TODO: load from storage
