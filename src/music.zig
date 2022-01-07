@@ -43,11 +43,11 @@ export fn update() void {
         w4.GAMEPAD1.button_1,
     }) |key, i| {
         const tone = if(w4.GAMEPAD1.button_left) (
-            i
+            i + (7 * 1)
         ) else if(w4.GAMEPAD1.button_right) (
-            i + (7 * 2)
+            i + (7 * 3)
         ) else (
-            i + 7
+            i + (7 * 2)
         );
         if(key and tones.len < 2) {
             tones.len += 1;
@@ -71,6 +71,7 @@ export fn update() void {
     }
 
     for(piano.piano) |byte, i| {
+        if(i < (28 * w4.CANVAS_SIZE) / 8) continue;
         w4.FRAMEBUFFER[i * 2] = (
             (((byte >> 7 & 0b1) * 0b11) << 0) |
             (((byte >> 6 & 0b1) * 0b11) << 2) |
@@ -88,31 +89,41 @@ export fn update() void {
     // 160,160
     // 7x28
 
-    for(&[_]void{{}} ** 33) |_, tone| {
+    const mpos = w4.MOUSE.pos();
+
+    for(&[_]void{{}} ** keys_c.len) |_, tone| {
         const ul: w4.Vec2 = .{
-            @intCast(i32, tone) * 5 + 28,
+            @intCast(i32, tone) * 5 - 7,
             0,
         };
 
-        const color: u2 = if(std.mem.indexOf(usize, tones, &.{tone}) != null) 0b10 else 0b11;
+        const pressed = std.mem.indexOf(usize, tones, &.{tone}) != null;
+        const height: i32 = if(pressed) 0 else if(
+            mpos[w4.x] >= ul[w4.x] and mpos[w4.x] < ul[w4.x] + 5 and mpos[w4.y] < 28
+        ) @as(i32, 1) else 2;
 
-        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{4, 28}, color);
+        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{1, 18 - height}, if(tone % 7 == 3 or tone % 7 == 0) 0b11 else 0b00);
+        fillRect(ul + w4.Vec2{2, 0}, w4.Vec2{1, 18 - height}, 0b11);
+        fillRect(ul + w4.Vec2{3, 0}, w4.Vec2{2, 18 - height}, if(tone % 7 == 2 or tone % 7 == 6) 0b11 else 0b00);
+    
+        fillRect(ul + w4.Vec2{1, 18 - height}, w4.Vec2{4, 10}, 0b11);
+        fillRect(ul + w4.Vec2{1, 28 - height}, w4.Vec2{4, height}, 0b10);
 
         fillRect(ul, .{1, 28}, 0b00);
-        fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
+        // fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
+        // fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
     }
 
-    for(&[_]void{{}} ** 33) |_, mid| {
+    for(&[_]void{{}} ** keys_c.len) |_, mid| {
         if(mid % 7 == 2) continue;
         if(mid % 7 == 6) continue;
         const ul: w4.Vec2 = .{
-            @intCast(i32, mid) * 5 + 31,
+            @intCast(i32, mid) * 5 - 4,
             0,
         };
 
-        const color: u2 = 0b00;
-
-        fillRect(ul, w4.Vec2{4, 15}, color);
+        fillRect(ul, w4.Vec2{4, 15}, 0b00);
+        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 12}, 0b01);
     }
 
     // for(tones) |tone| {
@@ -145,6 +156,9 @@ fn fillRect(ul: w4.Vec2, size: w4.Vec2, value: u2) void {
 const piano = @import("piano.zig");
 
 const keys_c = &[_]f32{
+    // -2
+    0, 0, 0, 0, 0, 0, 0, // idk
+
     // -1
     130.8128,
     146.8324,
@@ -171,4 +185,13 @@ const keys_c = &[_]f32{
     783.9909,
     880.0000,
     987.7666,
+
+    // +2
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
 };
