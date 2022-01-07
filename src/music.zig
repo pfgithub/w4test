@@ -20,18 +20,33 @@ export fn update() void {
     };
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.rect(.{0, 0}, .{w4.CANVAS_SIZE, w4.CANVAS_SIZE});
-
-    for([_]*const w4.Gamepad{w4.GAMEPAD1, w4.GAMEPAD2}) |gp, i| {
-        w4.DRAW_COLORS.* = 0x31;
-        const printed = std.fmt.allocPrint(arena.?, "[{}]", .{
-            gp,
-        }) catch @panic("oom");
-        w4.text(printed, .{5, @intCast(i32, i) * 10 + 5});
-    }
+    // w4.rect(.{0, 0}, .{w4.CANVAS_SIZE, w4.CANVAS_SIZE});
+    //
+    // for([_]*const w4.Gamepad{w4.GAMEPAD1, w4.GAMEPAD2}) |gp, i| {
+    //     w4.DRAW_COLORS.* = 0x31;
+    //     const printed = std.fmt.allocPrint(arena.?, "[{}]", .{
+    //         gp,
+    //     }) catch @panic("oom");
+    //     w4.text(printed, .{5, @intCast(i32, i) * 10 + 5});
+    // }
 
     var tones_base = [_]usize{undefined} ** 2; // two channels max at once
     var tones: []usize = tones_base[0..0];
+
+    const mpos = w4.MOUSE.pos();
+
+    var hovered_note: usize = std.math.maxInt(usize);
+    if(mpos[w4.y] < 28) {
+        const note = @divFloor(mpos[w4.x] + 7, 5);
+        if(note < keys_c.len and note >= 0) {
+            hovered_note = @intCast(usize, note);
+        }
+        // todo: black keys
+    }
+    if(w4.MOUSE.buttons.left and hovered_note != std.math.maxInt(usize) and tones.len < 2) {
+        tones.len += 1;
+        tones[tones.len - 1] = hovered_note;
+    }
 
     for([7]bool{
         w4.GAMEPAD2.button_2,
@@ -52,22 +67,25 @@ export fn update() void {
         if(key and tones.len < 2) {
             tones.len += 1;
             tones[tones.len - 1] = tone;
-
-            const channel: w4.ToneFlags.Channel = switch(tones.len) {
-                1 => .pulse1,
-                2 => .pulse2,
-                else => unreachable,
-            };
-            w4.tone(.{
-                .start = @floatToInt(u16, keys_c[tone]),
-            }, .{
-                .sustain = 4,
-                .release = 4,
-            }, 100, .{
-                .channel = channel,
-                .mode = .p25,
-            });
         }
+    }
+
+    for(tones) |tone, i| {
+        const channel: w4.ToneFlags.Channel = switch(i) {
+            0 => .pulse1,
+            1 => .pulse2,
+            else => unreachable,
+        };
+        
+        w4.tone(.{
+            .start = @floatToInt(u16, keys_c[tone]),
+        }, .{
+            .sustain = 4,
+            .release = 4,
+        }, 100, .{
+            .channel = channel,
+            .mode = .p25,
+        });
     }
 
     for(piano.piano) |byte, i| {
@@ -89,8 +107,6 @@ export fn update() void {
     // 160,160
     // 7x28
 
-    const mpos = w4.MOUSE.pos();
-
     for(&[_]void{{}} ** keys_c.len) |_, tone| {
         const ul: w4.Vec2 = .{
             @intCast(i32, tone) * 5 - 7,
@@ -99,7 +115,7 @@ export fn update() void {
 
         const pressed = std.mem.indexOf(usize, tones, &.{tone}) != null;
         const height: i32 = if(pressed) 0 else if(
-            mpos[w4.x] >= ul[w4.x] and mpos[w4.x] < ul[w4.x] + 5 and mpos[w4.y] < 28
+            tone == hovered_note
         ) @as(i32, 1) else 2;
 
         fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{1, 18 - height}, if(tone % 7 == 3 or tone % 7 == 0) 0b11 else 0b00);
@@ -155,17 +171,36 @@ fn fillRect(ul: w4.Vec2, size: w4.Vec2, value: u2) void {
 
 const piano = @import("piano.zig");
 
+// to shift this, apparently we just shift by the distance to the new note
+// but it includes sharps and stuff. like we use 7 of the 12 notes and to
+// shift, add each of the 7 indices +1
 const keys_c = &[_]f32{
     // -2
-    0, 0, 0, 0, 0, 0, 0, // idk
+    65.40639,
+    // 69.29566,
+    73.41619,
+    // 77.78175,
+    82.40689,
+    87.30706,
+    // 92.49861,
+    97.99886,
+    // 103.8262,
+    110.0000,
+    // 116.5409,
+    123.4708,
 
     // -1
     130.8128,
+    // 138.5913
     146.8324,
+    // 155.5635
     164.8138,
     174.6141,
+    // 184.9972
     195.9977,
+    // 207.6523
     220.0000,
+    // 233.0819
     246.9417,
 
     //  0
@@ -187,11 +222,16 @@ const keys_c = &[_]f32{
     987.7666,
 
     // +2
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    1046.502,
+    // 1108.731,
+    1174.659,
+    // 1244.508,
+    1318.510,
+    1396.913,
+    // 1479.978,
+    1567.982,
+    // 1661.219,
+    1760.000,
+    // 1864.655,
+    1975.533,
 };
