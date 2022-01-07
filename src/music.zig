@@ -30,41 +30,119 @@ export fn update() void {
         w4.text(printed, .{5, @intCast(i32, i) * 10 + 5});
     }
 
-    const keys_opt: ?*const [7]f32 = if(w4.GAMEPAD1.button_left) (
-        keys_c[0..][0..7]
-    ) else if(w4.GAMEPAD1.button_right) (
-        keys_c[14..][0..7]
-    ) else if(true) (
-        keys_c[7..][0..7]
-    ) else null;
+    var tones_base = [_]usize{undefined} ** 2; // two channels max at once
+    var tones: []usize = tones_base[0..0];
 
-    if(keys_opt) |keys| {
-        var channel: w4.ToneFlags.Channel = .pulse1;
+    for([7]bool{
+        w4.GAMEPAD2.button_2,
+        w4.GAMEPAD2.button_left,
+        w4.GAMEPAD2.button_up,
+        w4.GAMEPAD2.button_down,
+        w4.GAMEPAD2.button_right,
+        w4.GAMEPAD1.button_2,
+        w4.GAMEPAD1.button_1,
+    }) |key, i| {
+        const tone = if(w4.GAMEPAD1.button_left) (
+            i
+        ) else if(w4.GAMEPAD1.button_right) (
+            i + (7 * 2)
+        ) else (
+            i + 7
+        );
+        if(key and tones.len < 2) {
+            tones.len += 1;
+            tones[tones.len - 1] = tone;
 
-        for([7]bool{
-            w4.GAMEPAD2.button_2,
-            w4.GAMEPAD2.button_left,
-            w4.GAMEPAD2.button_up,
-            w4.GAMEPAD2.button_down,
-            w4.GAMEPAD2.button_right,
-            w4.GAMEPAD1.button_2,
-            w4.GAMEPAD1.button_1,
-        }) |key, i| {
-            if(key) {
-                w4.tone(.{
-                    .start = @floatToInt(u16, keys[i]),
-                }, .{
-                    .sustain = 4,
-                    .release = 4,
-                }, 100, .{
-                    .channel = channel,
-                    .mode = .p25,
-                });
-                channel = .pulse2;
-            }
+            const channel: w4.ToneFlags.Channel = switch(tones.len) {
+                1 => .pulse1,
+                2 => .pulse2,
+                else => unreachable,
+            };
+            w4.tone(.{
+                .start = @floatToInt(u16, keys_c[tone]),
+            }, .{
+                .sustain = 4,
+                .release = 4,
+            }, 100, .{
+                .channel = channel,
+                .mode = .p25,
+            });
+        }
+    }
+
+    for(piano.piano) |byte, i| {
+        w4.FRAMEBUFFER[i * 2] = (
+            (((byte >> 7 & 0b1) * 0b11) << 0) |
+            (((byte >> 6 & 0b1) * 0b11) << 2) |
+            (((byte >> 5 & 0b1) * 0b11) << 4) |
+            (((byte >> 4 & 0b1) * 0b11) << 6) |
+        0);
+        w4.FRAMEBUFFER[i * 2 + 1] = (
+            ((((byte >> 3) & 0b1) * 0b11) << 0) |
+            ((((byte >> 2) & 0b1) * 0b11) << 2) |
+            ((((byte >> 1) & 0b1) * 0b11) << 4) |
+            ((((byte >> 0) & 0b1) * 0b11) << 6) |
+        0);
+    }
+
+    // 160,160
+    // 7x28
+
+    for(&[_]void{{}} ** 33) |_, tone| {
+        const ul: w4.Vec2 = .{
+            @intCast(i32, tone) * 5 + 28,
+            0,
+        };
+
+        const color: u2 = if(std.mem.indexOf(usize, tones, &.{tone}) != null) 0b10 else 0b11;
+
+        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{4, 28}, color);
+
+        fillRect(ul, .{1, 28}, 0b00);
+        fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
+    }
+
+    for(&[_]void{{}} ** 33) |_, mid| {
+        if(mid % 7 == 2) continue;
+        if(mid % 7 == 6) continue;
+        const ul: w4.Vec2 = .{
+            @intCast(i32, mid) * 5 + 31,
+            0,
+        };
+
+        const color: u2 = 0b00;
+
+        fillRect(ul, w4.Vec2{4, 15}, color);
+    }
+
+    // for(tones) |tone| {
+    //     //
+    //     _ = tone;
+    // }
+}
+
+
+
+fn setPx(pos: w4.Vec2, value: u2) void {
+    if(@reduce(.Or, pos < w4.Vec2{0, 0})) return;
+    if(@reduce(.Or, pos >= @splat(2, @as(i32, w4.CANVAS_SIZE)))) return;
+    const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+    const index = @intCast(usize, @divFloor(index_unscaled, 4));
+    const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+    w4.FRAMEBUFFER[index] &= ~(@as(u8, 0b11) << byte_idx);
+    w4.FRAMEBUFFER[index] |= @as(u8, value) << byte_idx;
+}
+fn fillRect(ul: w4.Vec2, size: w4.Vec2, value: u2) void {
+    var offset: w4.Vec2 = .{0, 0};
+    while(offset[w4.y] < size[w4.y]) : (offset[w4.y] += 1) {
+        offset[w4.x] = 0;
+        while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
+            setPx(ul + offset, value);
         }
     }
 }
+
+const piano = @import("piano.zig");
 
 const keys_c = &[_]f32{
     // -1

@@ -28,7 +28,7 @@ pub const GAMEPAD4: *const Gamepad = @intToPtr(*const Gamepad, 0x19);
 
 pub const MOUSE: *const Mouse = @intToPtr(*const Mouse, 0x1a);
 pub const SYSTEM_FLAGS: *SystemFlags = @intToPtr(*SystemFlags, 0x1f);
-pub const FRAMEBUFFER: *[6400]u8 = @intToPtr(*[6400]u8, 0xA0);
+pub const FRAMEBUFFER: *[CANVAS_SIZE * CANVAS_SIZE / 4]u8 = @intToPtr(*[6400]u8, 0xA0);
 
 pub const Gamepad = packed struct {
     button_1: bool,
