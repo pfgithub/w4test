@@ -39,7 +39,7 @@ export fn update() void {
     if(mpos[w4.y] < 28) {
         const note = @divFloor(mpos[w4.x] + 7, 5);
         if(note < keys_c.len and note >= 0) {
-            hovered_note = @intCast(usize, note);
+            hovered_note = unwhitekeypos(@intCast(usize, note));
         }
         // todo: black keys
     }
@@ -47,6 +47,8 @@ export fn update() void {
         tones.len += 1;
         tones[tones.len - 1] = hovered_note;
     }
+
+    const shift = 0; // todo this should also move those shortcut icons
 
     for([7]bool{
         w4.GAMEPAD2.button_2,
@@ -57,17 +59,24 @@ export fn update() void {
         w4.GAMEPAD1.button_2,
         w4.GAMEPAD1.button_1,
     }) |key, i| {
-        const tone = if(w4.GAMEPAD1.button_left) (
+        var tone = unwhitekeypos(if(w4.GAMEPAD1.button_left) (
             i + (7 * 1)
         ) else if(w4.GAMEPAD1.button_right) (
             i + (7 * 3)
         ) else (
             i + (7 * 2)
-        );
-        // if up or down is pressed, add or subtract one.
+        ));
+        if(w4.GAMEPAD1.button_up) {
+            tone += 1;
+        }else if(w4.GAMEPAD1.button_down) {
+            tone -= 1;
+        }
+        tone += shift;
         if(key and tones.len < 2) {
             tones.len += 1;
             tones[tones.len - 1] = tone;
+
+            break;
         }
     }
 
@@ -108,9 +117,10 @@ export fn update() void {
     // 160,160
     // 7x28
 
-    for(&[_]void{{}} ** keys_c.len) |_, tone| {
+    for(&[_]void{{}} ** 34) |_, wkp| {
+        const tone = unwhitekeypos(wkp);
         const ul: w4.Vec2 = .{
-            @intCast(i32, tone) * 5 - 7,
+            @intCast(i32, wkp) * 5 - 7,
             0,
         };
 
@@ -119,16 +129,14 @@ export fn update() void {
             tone == hovered_note
         ) @as(i32, 1) else 2;
 
-        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{1, 18 - height}, if(tone % 7 == 3 or tone % 7 == 0) 0b11 else 0b00);
+        if(wkp % 7 == 3 or wkp % 7 == 0) fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{1, 18 - height}, 0b11);
         fillRect(ul + w4.Vec2{2, 0}, w4.Vec2{1, 18 - height}, 0b11);
-        fillRect(ul + w4.Vec2{3, 0}, w4.Vec2{2, 18 - height}, if(tone % 7 == 2 or tone % 7 == 6) 0b11 else 0b00);
+            if(wkp % 7 == 2 or wkp % 7 == 6) fillRect(ul + w4.Vec2{3, 0}, w4.Vec2{2, 18 - height}, 0b11);
     
         fillRect(ul + w4.Vec2{1, 18 - height}, w4.Vec2{4, 10}, 0b11);
         fillRect(ul + w4.Vec2{1, 28 - height}, w4.Vec2{4, height}, 0b10);
 
         fillRect(ul, .{1, 28}, 0b00);
-        // fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
-        // fillRect(ul + w4.Vec2{0, 27}, .{7, 1}, 0b00);
     }
 
     for(&[_]void{{}} ** keys_c.len) |_, mid| {
@@ -155,6 +163,23 @@ export fn update() void {
     // add a reset button if you mess it up.
     // and show which keys you're pressing / which are available or something
     // support all four controllers
+    // also it should let you pick an icon from any of the default keys it's bound
+    // to or just use the generic icon
+}
+
+fn unwhitekeypos(wkp: usize) usize {
+    const endbit = wkp % 7;
+    const startbit = wkp / 7;
+    return wkp + (startbit * 5) + switch(endbit) {
+        0 => @as(usize, 0),
+        1 => 1,
+        2 => 2,
+        3 => 2,
+        4 => 3,
+        5 => 4,
+        6 => 5,
+        else => unreachable,
+    };
 }
 
 
@@ -178,69 +203,86 @@ fn fillRect(ul: w4.Vec2, size: w4.Vec2, value: u2) void {
     }
 }
 
+// 1, 3, 6, 8, 10
+
 const piano = @import("piano.zig");
 
 // to shift this, apparently we just shift by the distance to the new note
 // but it includes sharps and stuff. like we use 7 of the 12 notes and to
 // shift, add each of the 7 indices +1
 const keys_c = &[_]f32{
+    // oh, it turns out this is trivial to calculate
+    // [starting note] * (2**( semitones /12))
+    // so we can start from something like 220.000
+    // and calculate everything around it
+
     // -2
     65.40639,
-    // 69.29566,
+    69.29566, //
     73.41619,
-    // 77.78175,
+    77.78175, //
     82.40689,
     87.30706,
-    // 92.49861,
+    92.49861, //
     97.99886,
-    // 103.8262,
+    103.8262, //
     110.0000,
-    // 116.5409,
+    116.5409, //
     123.4708,
 
     // -1
     130.8128,
-    // 138.5913
+    138.5913, //
     146.8324,
-    // 155.5635
+    155.5635, //
     164.8138,
     174.6141,
-    // 184.9972
+    184.9972, //
     195.9977,
-    // 207.6523
+    207.6523, //
     220.0000,
-    // 233.0819
+    233.0819, //
     246.9417,
 
     //  0
     261.6256,
+    277.1826, //
     293.6648,
+    311.1270, //
     329.6276,
     349.2282,
+    369.9944, //
     391.9954,
+    415.3047, //
     440.0000,
+    466.1638, //
     493.8833,
 
     // +1
     523.2511,
+    554.3653, //
     587.3295,
+    622.2540, //
     659.2551,
     698.4565,
+    739.9888, //
     783.9909,
+    830.6094, //
     880.0000,
+    932.3275, //
     987.7666,
 
     // +2
     1046.502,
-    // 1108.731,
+    1108.731, //
     1174.659,
-    // 1244.508,
+    1244.508, //
     1318.510,
     1396.913,
-    // 1479.978,
+    1479.978, //
     1567.982,
-    // 1661.219,
+    1661.219, //
     1760.000,
-    // 1864.655,
+    1864.655, //
     1975.533,
 };
