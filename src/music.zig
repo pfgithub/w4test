@@ -12,6 +12,9 @@ export fn update() void {
     arena = fba.allocator();
     defer arena = null;
 
+    var settings = getSettings();
+    defer saveSettings(settings);
+
     w4.PALETTE.* = .{
         0x000000,
         0x555555,
@@ -55,8 +58,6 @@ export fn update() void {
         tones[tones.len - 1] = hovered_note;
     }
 
-    const shift = 0; // todo this should also move those shortcut icons
-
     for([7]bool{
         w4.GAMEPAD2.button_2,
         w4.GAMEPAD2.button_left,
@@ -78,7 +79,8 @@ export fn update() void {
         }else if(w4.GAMEPAD1.button_down) {
             tone -= 1;
         }
-        tone += shift;
+        tone += settings.shift;
+        tone -= 2;
         if(key and tones.len < 2) {
             tones.len += 1;
             tones[tones.len - 1] = tone;
@@ -144,6 +146,17 @@ export fn update() void {
         fillRect(ul + w4.Vec2{1, 28 - height}, w4.Vec2{4, height}, 0b10);
 
         fillRect(ul, .{1, 28}, 0b00);
+
+        if(settings.round_l) {
+            setPx(ul + w4.Vec2{1, 27 - height}, 0b10);
+            setPx(ul + w4.Vec2{1, 27}, 0b00);
+            setPx(ul + w4.Vec2{3, 17 - height}, 0b11);
+        }
+        if(settings.round_r) {
+            setPx(ul + w4.Vec2{4, 27 - height}, 0b10);
+            setPx(ul + w4.Vec2{4, 27}, 0b00);
+            setPx(ul + w4.Vec2{1, 17 - height}, 0b11);
+        }
     }
 
     for(&[_]void{{}} ** 33) |_, mid| {
@@ -163,24 +176,57 @@ export fn update() void {
         fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 14 - height}, 0b01);
     }
 
-    // for(tones) |tone| {
-    //     //
-    //     _ = tone;
-    // }
+    var offset: w4.Vec2 = .{0, 0};
+    while(offset[w4.y] < size[w4.y]) : (offset[w4.y] += 1) {
+        offset[w4.x] = 0;
+        while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
+            setPx(ul + offset, value);
+        }
+    }
 
-    // ok below this I want:
-    // - configure the sound
-    // - configure your keys (it'll prompt you to press a key and rebind)
-    // both of these should save to disk.
-    // add a reset button if you mess it up.
-    // and show which keys you're pressing / which are available or something
-    // support all four controllers
-    // also it should let you pick an icon from any of the default keys it's bound
-    // to or just use the generic icon
-    // - note, to allow for keybinding it might be nice to return to ints and like &ing
-    //   and stuff because then setting a keybind is as trivial as checking if the
-    //   key that was just pressed != 0 and then saving that u8 value.
+    // ok next:
+    // - configuring keyboard keys
+    //   - below each piano key I want you to be able to press a button to assign
+    //     a key. you should click it and it should pop up saying "press any key"
+    //     you should be able to press a key and also there should be a way to
+    //     allow modifiers too. you should be able to assign multiple piano keys
+    //     to one keyboard key.
+    //     - oh i forgot the two sound max limitation. maybe don't do that
+    //   - it should show a picture of a controller and let you click the key you want
+    //     or select a different controller maybe. that'd be fancy
+    // - configuring sound
+    //   - pulse vs triangle wave
+    //   - p12.5 vs p25 vs p50 vs p75
+    // - switching key
+    //   - basically it just shifts all the binding icons by the settings.shift value
+    // - configuring appearence
+    //   - rounded left, rounded right, display colors
+    // - saving settings to disk
+    //   - this should be easy
+    // - after all of those, we're finished.
+
+    // if we want to be super fancy, we could add a record and playback button
+    // tha'd be cool
 }
+
+// keybind is []Key
+
+const Settings = extern struct {
+    // extern because memory layout should stay
+    // the same across compiler versions.
+    round_l: bool = false,
+    round_r: bool = false,
+    shift: usize = 2, // 0 = A, 1 = B, 2 = C, …
+};
+fn getSettings() Settings {
+    // TODO: load from storage
+    return temp_global_settings;
+}
+fn saveSettings(nset: Settings) void {
+    // TODO: save to storage
+    temp_global_settings = nset;
+}
+var temp_global_settings: Settings = .{};
 
 fn unblackkeypos(mid: usize) ?usize {
     const endbit = mid % 7;
@@ -315,4 +361,7 @@ const keys_c = &[_]f32{
     1760.000,
     1864.655, //
     1975.533,
+
+    // +3
+    2093.005,
 };
