@@ -64,6 +64,7 @@ export fn update() void {
         ) else (
             i + (7 * 2)
         );
+        // if up or down is pressed, add or subtract one.
         if(key and tones.len < 2) {
             tones.len += 1;
             tones[tones.len - 1] = tone;
@@ -146,6 +147,14 @@ export fn update() void {
     //     //
     //     _ = tone;
     // }
+
+    // ok below this I want:
+    // - configure the sound
+    // - configure your keys (it'll prompt you to press a key and rebind)
+    // both of these should save to disk.
+    // add a reset button if you mess it up.
+    // and show which keys you're pressing / which are available or something
+    // support all four controllers
 }
 
 
