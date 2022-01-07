@@ -176,11 +176,15 @@ export fn update() void {
         fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 14 - height}, 0b01);
     }
 
-    var offset: w4.Vec2 = .{0, 0};
-    while(offset[w4.y] < size[w4.y]) : (offset[w4.y] += 1) {
-        offset[w4.x] = 0;
-        while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
-            setPx(ul + offset, value);
+    if(false) {
+        // make the background darker
+        var offset: w4.Vec2 = .{0, 0};
+        const size: w4.Vec2 = .{w4.CANVAS_SIZE, w4.CANVAS_SIZE};
+        while(offset[w4.y] < size[w4.y]) : (offset[w4.y] += 1) {
+            offset[w4.x] = 0;
+            while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
+                if(@mod(offset[0], 2) == @mod(offset[1], 2)) setPx(offset, 0b00);
+            }
         }
     }
 
@@ -207,6 +211,10 @@ export fn update() void {
 
     // if we want to be super fancy, we could add a record and playback button
     // tha'd be cool
+
+    // and like a whole sequencer
+
+    // anyway those aren't useful unless wasm-4 adds a way to export stuff
 }
 
 // keybind is []Key
@@ -216,7 +224,7 @@ const Settings = extern struct {
     // the same across compiler versions.
     round_l: bool = false,
     round_r: bool = false,
-    shift: usize = 2, // 0 = A, 1 = B, 2 = C, …
+    shift: usize = 3, // 0 = A, 1 = B, 2 = C, …
 };
 fn getSettings() Settings {
     // TODO: load from storage
