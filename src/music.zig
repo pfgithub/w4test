@@ -38,10 +38,17 @@ export fn update() void {
     var hovered_note: usize = std.math.maxInt(usize);
     if(mpos[w4.y] < 28) {
         const note = @divFloor(mpos[w4.x] + 7, 5);
-        if(note < keys_c.len and note >= 0) {
-            hovered_note = unwhitekeypos(@intCast(usize, note));
+        if(note >= 0) {
+            const uwkp = unwhitekeypos(@intCast(usize, note));
+            if(uwkp < keys_c.len) hovered_note = uwkp;
         }
-        // todo: black keys
+    }
+    if(mpos[w4.y] < 15) {
+        const note = @divFloor(mpos[w4.x] + 4, 5);
+        if(note >= 0) {
+            const ubkp = unblackkeypos(@intCast(usize, note));
+            if(ubkp) |bk| if(bk < keys_c.len) {hovered_note = bk;};
+        }
     }
     if(w4.MOUSE.buttons.left and hovered_note != std.math.maxInt(usize) and tones.len < 2) {
         tones.len += 1;
@@ -139,16 +146,21 @@ export fn update() void {
         fillRect(ul, .{1, 28}, 0b00);
     }
 
-    for(&[_]void{{}} ** keys_c.len) |_, mid| {
-        if(mid % 7 == 2) continue;
-        if(mid % 7 == 6) continue;
+    for(&[_]void{{}} ** 33) |_, mid| {
+        const tone = unblackkeypos(mid) orelse continue;
         const ul: w4.Vec2 = .{
             @intCast(i32, mid) * 5 - 4,
             0,
         };
 
+
+        const pressed = std.mem.indexOf(usize, tones, &.{tone}) != null;
+        const height: i32 = if(pressed) 0 else if(
+            tone == hovered_note
+        ) @as(i32, 1) else 2;
+
         fillRect(ul, w4.Vec2{4, 15}, 0b00);
-        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 12}, 0b01);
+        fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 14 - height}, 0b01);
     }
 
     // for(tones) |tone| {
@@ -165,19 +177,37 @@ export fn update() void {
     // support all four controllers
     // also it should let you pick an icon from any of the default keys it's bound
     // to or just use the generic icon
+    // - note, to allow for keybinding it might be nice to return to ints and like &ing
+    //   and stuff because then setting a keybind is as trivial as checking if the
+    //   key that was just pressed != 0 and then saving that u8 value.
+}
+
+fn unblackkeypos(mid: usize) ?usize {
+    const endbit = mid % 7;
+    const startbit = mid / 7;
+    return (startbit * 12) + switch(endbit) {
+        0 => @as(usize, 1),
+        1 => 3,
+        2 => return null,
+        3 => 6,
+        4 => 8,
+        5 => 10,
+        6 => return null,
+        else => unreachable,
+    };
 }
 
 fn unwhitekeypos(wkp: usize) usize {
     const endbit = wkp % 7;
     const startbit = wkp / 7;
-    return wkp + (startbit * 5) + switch(endbit) {
+    return (startbit * 12) + switch(endbit) {
         0 => @as(usize, 0),
-        1 => 1,
-        2 => 2,
-        3 => 2,
-        4 => 3,
-        5 => 4,
-        6 => 5,
+        1 => 2,
+        2 => 4,
+        3 => 5,
+        4 => 7,
+        5 => 9,
+        6 => 11,
         else => unreachable,
     };
 }
