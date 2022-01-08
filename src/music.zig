@@ -308,6 +308,8 @@ export fn update() void {
             offset[w4.x] = 0;
             while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
                 if(anim_state.hh_anim_frame == std.math.maxInt(u3)) {
+                    if(@mod(offset[0], 2) == @mod(offset[1], 2) or @mod(offset[0], 2) == 1) setPx(offset, 0b01);
+                }else if(anim_state.hh_anim_frame >= std.math.maxInt(u3) / 2) {
                     if(@mod(offset[0], 2) == @mod(offset[1], 2)) setPx(offset, 0b01);
                 }else{
                     if(@mod(offset[0], 2) == 0 and @mod(offset[1], 2) == 0) setPx(offset, 0b01);
