@@ -12,15 +12,12 @@ export fn update() void {
     arena = fba.allocator();
     defer arena = null;
 
+    ui_state = .{};
+
     var settings = getSettings();
     defer saveSettings(settings);
 
-    w4.PALETTE.* = .{
-        0x000000,
-        0x555555,
-        0xAAAAAA,
-        0xFFFFFF,
-    };
+    w4.PALETTE.* = color_themes[settings.color_theme];
     w4.DRAW_COLORS.* = 0x22;
 
     // w4.rect(.{0, 0}, .{w4.CANVAS_SIZE, w4.CANVAS_SIZE});
@@ -80,7 +77,7 @@ export fn update() void {
             tone -= 1;
         }
         tone += settings.shift;
-        tone -= 2;
+        tone -= 4;
         if(key and tones.len < 2) {
             tones.len += 1;
             tones[tones.len - 1] = tone;
@@ -110,22 +107,6 @@ export fn update() void {
             .channel = channel,
             .mode = settings.tone_mode,
         });
-    }
-
-    for(piano.piano) |byte, i| {
-        if(i < (28 * w4.CANVAS_SIZE) / 8) continue;
-        w4.FRAMEBUFFER[i * 2] = (
-            (((byte >> 7 & 0b1) * 0b11) << 0) |
-            (((byte >> 6 & 0b1) * 0b11) << 2) |
-            (((byte >> 5 & 0b1) * 0b11) << 4) |
-            (((byte >> 4 & 0b1) * 0b11) << 6) |
-        0);
-        w4.FRAMEBUFFER[i * 2 + 1] = (
-            ((((byte >> 3) & 0b1) * 0b11) << 0) |
-            ((((byte >> 2) & 0b1) * 0b11) << 2) |
-            ((((byte >> 1) & 0b1) * 0b11) << 4) |
-            ((((byte >> 0) & 0b1) * 0b11) << 6) |
-        0);
     }
 
     // 160,160
@@ -181,14 +162,154 @@ export fn update() void {
         fillRect(ul + w4.Vec2{1, 0}, w4.Vec2{2, 14 - height}, 0b01);
     }
 
-    if(false) {
+    for(@embedFile("piano.w4i")) |byte, i| {
+        if(i < (29 * w4.CANVAS_SIZE) / 4) continue;
+        w4.FRAMEBUFFER[i] = byte;
+    }
+
+    if(button(settings, .{3, 144}, .{9, 9}, settings.round_l)) {
+        settings.round_l = true;
+    }
+    if(button(settings, .{11, 144}, .{9, 9}, !settings.round_l)) {
+        settings.round_l = false;
+    }
+
+    if(button(settings, .{25, 144}, .{9, 9}, !settings.round_r)) {
+        settings.round_r = false;
+    }
+    if(button(settings, .{33, 144}, .{9, 9}, settings.round_r)) {
+        settings.round_r = true;
+    }
+
+    if(button(settings, .{47, 144}, .{7, 9}, false)) {
+        if(!anim_state.css) {
+            if(settings.color_theme == 0) {
+                settings.color_theme = color_themes.len - 1;
+            }else{
+                settings.color_theme -= 1;
+            }
+        }
+        anim_state.css = true;
+    }else if(button(settings, .{79, 144}, .{7, 9}, false)) {
+        if(!anim_state.css) {
+            settings.color_theme +%= 1;
+            settings.color_theme %= color_themes.len;
+        }
+        anim_state.css = true;
+    }else anim_state.css = false;
+
+    if(button(settings, .{92, 144}, .{9, 9}, !settings.temporary_hidehalf)) {
+        settings.temporary_hidehalf = false;
+    }
+    if(button(settings, .{100, 144}, .{9, 9}, settings.temporary_hidehalf)) {
+        settings.temporary_hidehalf = true;
+    }
+
+    if(button(settings, .{26, 99}, .{27, 9}, settings.tone_mode == .p12_5)) {
+        settings.tone_mode = .p12_5;
+    }
+    if(button(settings, .{55, 99}, .{21, 9}, settings.tone_mode == .p25)) {
+        settings.tone_mode = .p25;
+    }
+    if(button(settings, .{78, 99}, .{21, 9}, settings.tone_mode == .p50)) {
+        settings.tone_mode = .p50;
+    }
+    if(button(settings, .{101, 99}, .{20, 9}, settings.tone_mode == .p75)) {
+        settings.tone_mode = .p75;
+    }
+
+    if(button(settings, .{28, 88}, .{24, 9}, settings.channel == .pulse)) {
+        settings.channel = .pulse;
+    }
+    if(button(settings, .{55, 88}, .{31, 9}, settings.channel == .triangle)) {
+        settings.channel = .triangle;
+    }
+    if(button(settings, .{88, 88}, .{24, 9}, settings.channel == .noise)) {
+        settings.channel = .noise;
+    }
+
+    if(button(settings, .{21, 77}, .{8, 9}, settings.shift == 4)) {
+        settings.shift = 4;
+    }
+    if(button(settings, .{25, 73}, .{7, 7}, settings.shift == 5)) {
+        settings.shift = 5;
+    }
+    if(button(settings, .{28, 77}, .{8, 9}, settings.shift == 6)) {
+        settings.shift = 6;
+    }
+    if(button(settings, .{32, 73}, .{7, 7}, settings.shift == 7)) {
+        settings.shift = 7;
+    }
+    if(button(settings, .{35, 77}, .{8, 9}, settings.shift == 8)) {
+        settings.shift = 8;
+    }
+    if(button(settings, .{42, 77}, .{8, 9}, settings.shift == 9)) {
+        settings.shift = 9;
+    }
+    if(button(settings, .{46, 73}, .{7, 7}, settings.shift == 10)) {
+        settings.shift = 10;
+    }
+    if(button(settings, .{49, 77}, .{8, 9}, settings.shift == 11)) {
+        settings.shift = 11;
+    }
+    if(button(settings, .{53, 73}, .{7, 7}, settings.shift == 0)) {
+        settings.shift = 0;
+    }
+    if(button(settings, .{56, 77}, .{8, 9}, settings.shift == 1)) {
+        settings.shift = 1;
+    }
+    if(button(settings, .{60, 73}, .{7, 7}, settings.shift == 2)) {
+        settings.shift = 2;
+    }
+    if(button(settings, .{63, 77}, .{8, 9}, settings.shift == 3)) {
+        settings.shift = 3;
+    }
+
+    if(settings.temporary_hidehalf) {
+        anim_state.hh_anim_frame +|= 1;
+    }else{
+        anim_state.hh_anim_frame -|= 1;
+    }
+
+    const slider_mpos = mpos - w4.Vec2{26, 112};
+    const slider_hovering = @reduce(.And, slider_mpos < w4.Vec2{97, 7}) and @reduce(.And, slider_mpos >= w4.Vec2{0, 0});
+
+    if(slider_hovering and w4.MOUSE.buttons.left) {
+        if(slider_mpos[w4.x] > 40) {
+            settings.release = @intCast(u8, slider_mpos[w4.x] - 20);
+        }else{
+            settings.release = @intCast(u8, @divFloor(slider_mpos[w4.x], 2));
+        }
+    }
+
+    var sliderpos = w4.Vec2{26, 115};
+    if(settings.release < 20) {
+        sliderpos[w4.x] += settings.release * 2;
+    }else{
+        sliderpos[w4.x] += (20 * 2) + (settings.release - 20);
+    }
+    if(slider_hovering) fillRect(sliderpos + w4.Vec2{-1, -1}, .{3, 3}, 0b11);
+    fillRect(sliderpos + w4.Vec2{-2, -1}, .{1, 3}, 0b11);
+    fillRect(sliderpos + w4.Vec2{-1, -2}, .{3, 1}, 0b11);
+    fillRect(sliderpos + w4.Vec2{2, -1}, .{1, 3}, 0b11);
+    fillRect(sliderpos + w4.Vec2{-1, 2}, .{3, 1}, 0b11);
+
+    // w4.trace(&[_:0]u8{@as(u8, anim_state.hh_anim_frame) + '0'});
+
+    if(anim_state.hh_anim_frame != 0) {
         // make the background darker
+        // we could do an animation where we start with 1/4 and then go to 1/2
+        // that'd be neat
         var offset: w4.Vec2 = .{0, 0};
         const size: w4.Vec2 = .{w4.CANVAS_SIZE, w4.CANVAS_SIZE};
         while(offset[w4.y] < size[w4.y]) : (offset[w4.y] += 1) {
             offset[w4.x] = 0;
             while(offset[w4.x] < size[w4.x]) : (offset[w4.x] += 1) {
-                if(@mod(offset[0], 2) == @mod(offset[1], 2)) setPx(offset, 0b00);
+                if(anim_state.hh_anim_frame == std.math.maxInt(u3)) {
+                    if(@mod(offset[0], 2) == @mod(offset[1], 2)) setPx(offset, 0b01);
+                }else{
+                    if(@mod(offset[0], 2) == 0 and @mod(offset[1], 2) == 0) setPx(offset, 0b01);
+                }
             }
         }
     }
@@ -224,6 +345,89 @@ export fn update() void {
     // enumEdit(w4.ToneFlags.Mode, &settings.tone_mode);
 }
 
+var ui_state: struct {
+    hovered: bool = false,
+} = .{};
+var anim_state: struct {
+    hh_anim_frame: u3 = 0,
+    css: bool = false,
+} = .{};
+
+fn button(settings: Settings, ul: w4.Vec2, size: w4.Vec2, active: bool) bool {
+    _ = settings;
+
+    // only allow touching the first one each frame
+    // just set a variable and clear it at the start of the frame
+
+    var hovering = false;
+
+    const mpos = w4.MOUSE.pos();
+    if(!ui_state.hovered and @reduce(.And, mpos >= ul) and @reduce(.And, mpos < ul + size)) {
+        hovering = true;
+        ui_state.hovered = true;
+    }
+
+    const clicked = hovering and w4.MOUSE.buttons.left;
+
+    if(clicked or active) {
+        w4.DRAW_COLORS.* = 0x30;
+    }else if(hovering) {
+        w4.DRAW_COLORS.* = 0x20;
+    }else{
+        return false;
+    }
+
+    const bl = ul + w4.Vec2{0, size[w4.y] - 1};
+    const ru = ul + w4.Vec2{size[w4.x] - 1, 0};
+    const rl = ul + w4.Vec2{size[w4.x] - 1, size[w4.y] - 1};
+
+    const bfw = getPx(ul) != 0b10;
+    const bfl = getPx(bl) != 0b10;
+    const bru = getPx(ru) != 0b10;
+    const brl = getPx(rl) != 0b10;
+
+    w4.rect(ul, size);
+
+    if(settings.round_l) {
+        if(bfw) {
+            setPx(ul, 0b00);
+        }
+        if(bfl) {
+            setPx(bl, 0b00);
+        }
+    }
+    if(settings.round_r) {
+        if(bru) {
+            setPx(ru, 0b00);
+        }
+        if(brl) {
+            setPx(rl, 0b00);
+        }
+    }
+
+    return clicked;
+}
+
+const color_themes = [_][4]u32{
+    // [!] marked ones are the best
+
+    .{ 0x000000, 0x555555, 0xAAAAAA, 0xFFFFFF }, // b&w
+    .{ 0x211e20, 0x555568, 0xa0a08b, 0xe9efec }, // [!] demichrome
+    .{ 0x46425e, 0x5b768d, 0xd17c7c, 0xf6c6a8 }, // [!] colorfire
+    .{ 0x280b0b, 0x6c2e53, 0xd17c7c, 0xf6c6a8 }, // [!] reds
+
+    .{ 0x7c3f58, 0xeb6b6f, 0xf9a875, 0xfff6d3 }, // [.] ice cream gb
+    .{ 0x4e3f2a, 0x605444, 0x887b6a, 0xaea691 }, // [.] beige
+    .{ 0x332c50, 0x46878f, 0x94e344, 0xe2f3e4 }, // [.] greens
+    .{ 0x2d1b00, 0x1e606e, 0x5ab9a8, 0xc4f0c2 }, // [.] blues
+    .{ 0x071821, 0x306850, 0x86c06c, 0xe0f8cf }, // [.] w4 default
+    .{ 0x002b59, 0x005f8c, 0x00b9be, 0x9ff4e5 }, // [.] aqua
+    .{ 0x210b1b, 0x4d222c, 0x9d654c, 0xcfab51 }, // [.] gold
+    .{ 0x000000, 0x382843, 0x7c6d80, 0xc7c6c6 }, // [.] deep purples
+
+    .{ 0x0f0f1b, 0x565a75, 0xc6b7be, 0xfafbf6 }, // [!] whites
+};
+
 const Settings = struct {
     // extern because memory layout should stay
     // the same across compiler versions.
@@ -231,11 +435,15 @@ const Settings = struct {
     // from different builds of the project.
     round_l: bool = false,
     round_r: bool = false,
-    shift: usize = 2, // 0 = A, 1 = B, 2 = C, …
+    shift: usize = 4, // 4 = C
 
     release: u8 = 4,
     channel: enum(u8) {pulse, triangle, noise} = .pulse,
     tone_mode: w4.ToneFlags.Mode = .p25,
+
+    temporary_hidehalf: bool = false,
+
+    color_theme: usize = 0,
 };
 fn getSettings() Settings {
     // TODO: load from storage
@@ -278,7 +486,14 @@ fn unwhitekeypos(wkp: usize) usize {
 }
 
 
-
+fn getPx(pos: w4.Vec2) u2 {
+    if(@reduce(.Or, pos < w4.Vec2{0, 0})) return 0;
+    if(@reduce(.Or, pos >= @splat(2, @as(i32, w4.CANVAS_SIZE)))) return 0;
+    const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+    const index = @intCast(usize, @divFloor(index_unscaled, 4));
+    const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+    return @truncate(u2, w4.FRAMEBUFFER[index] >> byte_idx);
+}
 fn setPx(pos: w4.Vec2, value: u2) void {
     if(@reduce(.Or, pos < w4.Vec2{0, 0})) return;
     if(@reduce(.Or, pos >= @splat(2, @as(i32, w4.CANVAS_SIZE)))) return;
@@ -299,8 +514,6 @@ fn fillRect(ul: w4.Vec2, size: w4.Vec2, value: u2) void {
 }
 
 // 1, 3, 6, 8, 10
-
-const piano = @import("piano.zig");
 
 // to shift this, apparently we just shift by the distance to the new note
 // but it includes sharps and stuff. like we use 7 of the 12 notes and to
