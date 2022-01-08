@@ -90,8 +90,13 @@ export fn update() void {
     }
 
     for(tones) |tone, i| {
+        if(settings.channel != .pulse and i > 0) break;
         const channel: w4.ToneFlags.Channel = switch(i) {
-            0 => .pulse1,
+            0 => switch(settings.channel) {
+                .pulse => w4.ToneFlags.Channel.pulse1,
+                .triangle => .triangle,
+                .noise => .noise,
+            },
             1 => .pulse2,
             else => unreachable,
         };
@@ -100,10 +105,10 @@ export fn update() void {
             .start = @floatToInt(u16, keys_c[tone]),
         }, .{
             .sustain = 4,
-            .release = 4,
+            .release = settings.release,
         }, 100, .{
             .channel = channel,
-            .mode = .p25,
+            .mode = settings.tone_mode,
         });
     }
 
@@ -215,16 +220,22 @@ export fn update() void {
     // and like a whole sequencer
 
     // anyway those aren't useful unless wasm-4 adds a way to export stuff
+
+    // enumEdit(w4.ToneFlags.Mode, &settings.tone_mode);
 }
 
-// keybind is []Key
-
-const Settings = extern struct {
+const Settings = struct {
     // extern because memory layout should stay
     // the same across compiler versions.
+    // nvm i have decided that i don't care. we will not support settings
+    // from different builds of the project.
     round_l: bool = false,
     round_r: bool = false,
     shift: usize = 2, // 0 = A, 1 = B, 2 = C, …
+
+    release: u8 = 4,
+    channel: enum(u8) {pulse, triangle, noise} = .pulse,
+    tone_mode: w4.ToneFlags.Mode = .p25,
 };
 fn getSettings() Settings {
     // TODO: load from storage
