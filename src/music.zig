@@ -1,16 +1,18 @@
 const std = @import("std");
 const w4 = @import("wasm4.zig");
 
-var buffer: [1000]u8 = undefined;
+const save_version = 1; // must be ≥ 1
+
+// var alloc_buffer: [1000]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
 
 export fn start() void {}
 
 export fn update() void {
-    var fba = std.heap.FixedBufferAllocator.init(&buffer);
-    arena = fba.allocator();
-    defer arena = null;
+    // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
+    // arena = fba.allocator();
+    // defer arena = null;
 
     ui_state = .{};
 
@@ -445,15 +447,26 @@ const Settings = struct {
 
     color_theme: usize = 0,
 };
+const total_settings_size = 1 + @sizeOf(Settings);
 fn getSettings() Settings {
-    // TODO: load from storage
-    return temp_global_settings;
+    var buffer = [_]u8{0} ** total_settings_size;
+    const resv = w4.diskr(&buffer, buffer.len);
+
+    if(buffer[0] != save_version or resv != total_settings_size) {
+        return .{};
+    }else{
+        return std.mem.bytesToValue(Settings, buffer[1..]);
+    }
 }
 fn saveSettings(nset: Settings) void {
-    // TODO: save to storage
-    temp_global_settings = nset;
+    // TODO: only write on change
+
+    var buffer = [_]u8{0} ** total_settings_size;
+    buffer[0] = save_version;
+    std.mem.copy(u8, buffer[1..], &std.mem.toBytes(nset));
+
+    if(w4.diskw(&buffer, buffer.len) != total_settings_size) unreachable;
 }
-var temp_global_settings: Settings = .{};
 
 fn unblackkeypos(mid: usize) ?usize {
     const endbit = mid % 7;
