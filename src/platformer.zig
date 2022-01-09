@@ -30,6 +30,62 @@ const w4 = @import("wasm4.zig");
 
 var arena: ?std.mem.Allocator = null;
 
+const DecompressionDataRuntime = struct {
+    size: w4.Vec2,
+    data_out: []u8,
+    compressed_in: []const u8,
+};
+
+fn decompressionData(compressed_data_0: []const u8, size_0: w4.Vec2) type {
+    return struct {
+        pub const compressed_data = compressed_data_0;
+        pub const size = size_0;
+        data: [std.math.divCeil(comptime_int, size[0] * size[1] * 2, 8) catch unreachable]u8 = undefined,
+        fn runtime(self: *@This()) DecompressionDataRuntime {
+            return .{
+                .data_out = &self.data,
+                .compressed_in = compressed_data,
+                .size = size,
+            };
+        }
+    };
+}
+
+fn decompress(dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
+    var fbs_in = std.io.fixedBufferStream(dcd.compressed_in);
+    var reader = std.io.bitReader(.Big, fbs_in.reader());
+
+    var fbs_out = std.io.fixedBufferStream(dcd.data_out);
+    var writer = std.io.bitWriter(.Big, fbs_out.writer());
+
+    const tag = try reader.readBitsNoEof(u8, 8);
+    if(tag != 0b10001000) return error.BadInput;
+
+    whlp: while(true) {
+        const mode = reader.readBitsNoEof(u1, 1) catch break :whlp;
+        switch(mode) {
+            0 => {
+                const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
+                const len = reader.readBitsNoEof(u9, 9) catch break :whlp;
+                for(w4.range(len)) |_| {
+                    writer.writeBits(value, 2) catch break :whlp;
+                }
+            },
+            1 => {
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+            },
+        }
+    }
+
+    // done!
+    return w4.Tex(.mut).wrapSlice(dcd.data_out, dcd.size);
+}
+
+var wasm4platformerlevel1: decompressionData(@embedFile("wasm4platformerlevel1.w4i"), w4.Vec2{160, 160}) = .{};
+var decompressed_image: ?w4.Tex(.mut) = null;
+
 export fn start() void {}
 
 export fn update() void {
@@ -39,6 +95,10 @@ export fn update() void {
 
     var state = getState();
     defer saveState(state);
+
+    if(decompressed_image == null) {
+        decompressed_image = decompress(wasm4platformerlevel1.runtime()) catch unreachable;
+    }
 
     state.frame += 1;
     if(state.frame > std.math.maxInt(usize) / 2) {
@@ -83,10 +143,10 @@ export fn update() void {
     w4.PALETTE.* = color_themes[0];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
+    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
 
     const player_color: u3 = if(magnitude(state.player.vel_dash) >= 0.3) 3 else 1;
-    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, state.player.size, .{
+    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, state.player.size, .{
         player_color,
         player_color,
         player_color,
@@ -179,28 +239,28 @@ const Player = struct {
     pub fn colliding(player: *Player) bool {
         const pos = player.posInt();
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
-            const value = level_1_collision_map.get(pos + w4.Vec2{
+            const value = decompressed_image.?.get(pos + w4.Vec2{
                 @intCast(i32, x),
                 0,
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
-            const value = level_1_collision_map.get(pos + w4.Vec2{
+            const value = decompressed_image.?.get(pos + w4.Vec2{
                 @intCast(i32, x),
                 player.size[w4.y] - 1,
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
-            const value = level_1_collision_map.get(pos + w4.Vec2{
+            const value = decompressed_image.?.get(pos + w4.Vec2{
                 0,
                 @intCast(i32, y + 1),
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
-            const value = level_1_collision_map.get(pos + w4.Vec2{
+            const value = decompressed_image.?.get(pos + w4.Vec2{
                 player.size[w4.x] - 1,
                 @intCast(i32, y + 1),
             });
@@ -220,8 +280,6 @@ const State = struct {
     // if the player is on a moving platform, don't control this with player_vel.
     // we need like a player_environment_vel or something.
 };
-
-const level_1_collision_map = w4.Tex(.cons).wrapSlice(@embedFile("wasm4platformerlevel1.w4i"), w4.Vec2{160, 160});
 
 const color_themes = [_][4]u32{
     // just random things. we'll want to pick good color themes for the scene eventually.

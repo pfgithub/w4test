@@ -32,7 +32,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
     pub fn wrapSlice(slice: switch(mbl) {
         .mut => []u8,
         .cons => []const u8,
-    }, comptime size: Vec2) Tex(.cons) {
+    }, size: Vec2) Tex(mbl) {
         if(slice.len != std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable) {
             unreachable;
         }

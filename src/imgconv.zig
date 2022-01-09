@@ -101,7 +101,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
                 }
                 total += 1;
             }
-            try writer.writeBits(@as(u1, 0b0), 1);
+            try writer.writeBits(@as(u1, 0b0), 0);
             try writer.writeBits(@as(u2, value0), 2);
             try writer.writeBits(total, 9);
             if(total > highest_total) highest_total = total;
@@ -198,13 +198,13 @@ pub fn main() !void {
 
     const compressed = try compress2bpp(alloc, al.items);
 
-    try std.fs.cwd().writeFile(args[2], al.items);
+    try std.fs.cwd().writeFile(args[2], compressed);
 
-    std.log.info("emitted uncompressed: {:.2} ({d:0.2}%)", .{
+    std.log.info("uncompressed: {:.2} ({d:0.2}%)", .{
         std.fmt.fmtIntSizeBin(al.items.len),
         @intToFloat(f64, al.items.len) / (64.0 * 1024.0) * 100,
     });
-    std.log.info("compressed ver: {:.2} ({d:0.2}%)", .{
+    std.log.info("emitted compressed: {:.2} ({d:0.2}%)", .{
         std.fmt.fmtIntSizeBin(compressed.len),
         @intToFloat(f64, compressed.len) / (64.0 * 1024.0) * 100,
     });
