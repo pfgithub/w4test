@@ -1,3 +1,14 @@
+// ok here's my idea
+// I want to make a clicker game
+// but it's a platformer/metroidvania or something
+// like you have to explore the world to find shops to get upgrades to your clicks
+
+// so we'll start in a room with a button you can click
+// click it as much as you'd like
+// and then you'll have to venture out to find upgrades
+// that's a kinda neat idea i think
+
+
 // draw levels in a pixel art editor
 // we might have to switch to tilemaps due to space constraints
 
@@ -36,14 +47,14 @@ export fn update() void {
 
     var xvel: f32 = 0;
     if(w4.GAMEPAD1.button_left) {
-        xvel -= 1.5;
+        xvel -= 1;
     }
     if(w4.GAMEPAD1.button_right) {
-        xvel += 1.5;
+        xvel += 1;
     }
     state.player.vel[w4.x] = xvel;
     if(w4.GAMEPAD1.button_up and state.player.on_ground <= 6) {
-        state.player.vel[w4.y] = 3.2;
+        state.player.vel[w4.y] = 2.2;
         state.player.on_ground = std.math.maxInt(u8);
     }
     state.player.vel[w4.y] -= 0.20;
@@ -52,9 +63,9 @@ export fn update() void {
     w4.PALETTE.* = color_themes[0];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2});
+    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
 
-    w4.ctx.blit(w4.Vec2{80, 80}, level_1_collision_map, .{0, 0}, state.player.size, .{1, 1, 1, 1});
+    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, state.player.size, .{1, 1, 1, 1}, .{2, 2});
 }
 
 fn sign(x: anytype) @TypeOf(x) {

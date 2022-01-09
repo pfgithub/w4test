@@ -49,7 +49,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
         };
     }
 
-    pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3) void {
+    pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
         for(range(@intCast(usize, src_wh[y]))) |_, y_usz| {
             const yp = @intCast(i32, y_usz);
             for(range(@intCast(usize, src_wh[x]))) |_, x_usz| {
@@ -58,7 +58,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
 
                 const value = remap_colors[src.get(src_ul + pos)];
                 if(value <= std.math.maxInt(u2)) { 
-                    dest.set(dest_ul + pos, @intCast(u2, value));
+                    dest.set((dest_ul + pos) * scale, @intCast(u2, value));
                 }
             }
         }
