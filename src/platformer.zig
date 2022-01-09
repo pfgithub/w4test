@@ -163,7 +163,7 @@ export fn update() void {
     w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
     w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
 
-    const player_color: u3 = if(magnitude(state.player.vel_dash) >= 0.3) 3 else 1;
+    const player_color: u3 = if(state.player.dash_used) 3 else 1;
     w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, state.player.size, .{
         player_color,
         player_color,
