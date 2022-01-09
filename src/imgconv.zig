@@ -60,6 +60,78 @@
 //
 // nice, simple, 1-pass compression and decompression
 
+/// output:
+/// [0b10001000]
+/// []node
+///
+/// type node =
+///   | 0b0 u2 u9
+///   | 0b10 u2 u2 u2
+///   | 0b11 never
+fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
+    var fbs = std.io.fixedBufferStream(data);
+    var reader = std.io.bitReader(.Little, fbs.reader());
+
+    var al = std.ArrayList(u8).init(alloc);
+    var writer = std.io.bitWriter(.Little, al.writer());
+
+    try writer.writeBits(@as(u8, 0b10001000), 8); // settings
+
+    var remains: ?u2 = null;
+
+    var highest_total: u9 = 0;
+
+    while(true) {
+        const value0: u2 = if(remains) |rem| blk: {
+            defer remains = null;
+            break :blk rem;
+        } else reader.readBitsNoEof(u2, 2) catch break;
+        const value1: u2 = reader.readBitsNoEof(u2, 2) catch value0;
+        const value2: u2 = reader.readBitsNoEof(u2, 2) catch value0;
+        if(value0 == value1 and value1 == value2) {
+            try writer.writeBits(@as(u1, 0b0), 1);
+
+            var total: u9 = 3;
+            while(true) {
+                if(total == std.math.maxInt(u9)) break;
+                const next = reader.readBitsNoEof(u2, 2) catch break;
+                if(next != value0) {
+                    remains = next;
+                    break;
+                }
+                total += 1;
+            }
+            try writer.writeBits(total, 9);
+            if(total > highest_total) highest_total = total;
+        }else{
+            try writer.writeBits(@as(u1, 0b1), 1); // actually i have decided i don't care
+            // try writer.writeBits(@as(u2, 0b10), 2);
+            try writer.writeBits(value0, 2);
+            try writer.writeBits(value1, 2);
+            try writer.writeBits(value2, 2);
+        }
+    }
+    // we're going to read 3 into an arraylist
+    // if the values are not all the same:
+    // - insert a [0b10 a b c] node
+    // if the values are all the same:
+    // - keep reading values until the next different value or 
+
+    std.log.info("Compression info:", .{});
+    std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u13)});
+
+    // note: we don't care about the ending because the reader knows how many
+    // bytes it's expecting.
+
+    return al.toOwnedSlice();
+}
+
+// decompress2bpp(size: …, out_buffer: []u8)
+
+// fn compress1bpp(reader) void {
+//     const value = reader.readBits(u1);
+// }
+
 const c = @cImport({
     @cInclude("stb_image.h");
 });
@@ -119,11 +191,17 @@ pub fn main() !void {
         try bit_stream_be.writeBits(value, 2);
     }
 
+    const compressed = try compress2bpp(alloc, al.items);
+
     try std.fs.cwd().writeFile(args[2], al.items);
 
     std.log.info("emitted uncompressed: {:.2} ({d:0.2}%)", .{
         std.fmt.fmtIntSizeBin(al.items.len),
         @intToFloat(f64, al.items.len) / (64.0 * 1024.0) * 100,
+    });
+    std.log.info("compressed ver: {:.2} ({d:0.2}%)", .{
+        std.fmt.fmtIntSizeBin(compressed.len),
+        @intToFloat(f64, compressed.len) / (64.0 * 1024.0) * 100,
     });
     // wasm4 uses 64 * 1024 bytes as the maximum.
 }
