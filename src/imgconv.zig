@@ -81,6 +81,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
 
     var highest_total: u9 = 0;
     var raw_count: usize = 0;
+    var total_count: usize = 0;
 
     while(true) {
         const value0: u2 = if(remains) |rem| blk: {
@@ -112,6 +113,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
             try writer.writeBits(value2, 2);
             raw_count += 1;
         }
+        total_count += 1;
     }
     // we're going to read 3 into an arraylist
     // if the values are not all the same:
@@ -121,7 +123,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
 
     std.log.info("Compression info:", .{});
     std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u9)});
-    std.log.info("- raw nodes: {}", .{raw_count});
+    std.log.info("- raw nodes: {}/{}", .{raw_count, total_count});
 
     // note: we don't care about the ending because the reader knows how many
     // bytes it's expecting.
