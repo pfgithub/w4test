@@ -269,9 +269,9 @@ const Player = struct {
         player.vel_instant = Vec2f{0, 0};
         if(player.on_ground == 0) {
             player.dash_used = false;
-            player.vel_instant_prev[w4.x] *= 0.7;
+            player.vel_instant_prev[w4.x] *= 0.6;
         }else{
-            player.vel_instant_prev[w4.x] *= 0.95;
+            player.vel_instant_prev[w4.x] *= 0.8;
         }
         player.vel_dash *= @splat(2, @as(f32, 0.9));
         if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
