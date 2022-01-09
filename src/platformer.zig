@@ -53,10 +53,10 @@ fn decompressionData(compressed_data_0: []const u8, size_0: w4.Vec2) type {
 
 fn decompress(dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
     var fbs_in = std.io.fixedBufferStream(dcd.compressed_in);
-    var reader = std.io.bitReader(.Big, fbs_in.reader());
+    var reader = std.io.bitReader(.Little, fbs_in.reader());
 
     var fbs_out = std.io.fixedBufferStream(dcd.data_out);
-    var writer = std.io.bitWriter(.Big, fbs_out.writer());
+    var writer = std.io.bitWriter(.Little, fbs_out.writer());
 
     const tag = try reader.readBitsNoEof(u8, 8);
     if(tag != 0b10001000) return error.BadInput;
