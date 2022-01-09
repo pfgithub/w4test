@@ -85,8 +85,14 @@ const Player = struct {
         for(w4.range(@floatToInt(usize, @ceil(step_x_count)))) |_| {
             player.pos[w4.x] += step_x;
             if(player.colliding()) {
-                player.pos[w4.x] -= step_x;
-                break;
+                for([_]f32{-1, 1}) |v| {
+                    player.pos[w4.y] += v;
+                    if(!player.colliding()) break; // note: we should also decrease the velocity
+                    player.pos[w4.y] -= v;
+                }else{
+                    player.pos[w4.x] -= step_x;
+                    break;
+                }
             }
         }
         const step_y_count = @ceil(std.math.fabs(player.vel[w4.y]));
@@ -101,18 +107,13 @@ const Player = struct {
                 }else{
                     player.pos[w4.y] -= step_y;
                     player.vel[w4.y] = 0;
+                    if(step_y < 0) player.on_ground = 0;
                     break;
                 }
+            }else{
+            player.on_ground +|= 1;
             }
         }
-
-        player.pos[w4.y] -= 1;
-        if(player.colliding()) {
-            player.on_ground = 0;
-        }else{
-            player.on_ground +|= 1;
-        }
-        player.pos[w4.y] += 1;
     }
     pub fn colliding(player: *Player) bool {
         const pos = player.posInt();
