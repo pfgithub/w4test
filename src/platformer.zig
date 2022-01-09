@@ -52,9 +52,9 @@ export fn update() void {
     w4.PALETTE.* = color_themes[0];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(.{0, 0}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2});
+    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2});
 
-    w4.ctx.blit(state.player.posInt(), level_1_collision_map, .{0, 0}, state.player.size, .{1, 1, 1, 1});
+    w4.ctx.blit(w4.Vec2{80, 80}, level_1_collision_map, .{0, 0}, state.player.size, .{1, 1, 1, 1});
 }
 
 fn sign(x: anytype) @TypeOf(x) {
