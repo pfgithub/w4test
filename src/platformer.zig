@@ -43,10 +43,10 @@ export fn update() void {
     }
     state.player.vel[w4.x] = xvel;
     if(w4.GAMEPAD1.button_up and state.player.on_ground <= 6) {
-        state.player.vel[w4.y] = 2.2;
+        state.player.vel[w4.y] = 3.2;
         state.player.on_ground = std.math.maxInt(u8);
     }
-    state.player.vel[w4.y] -= 0.1;
+    state.player.vel[w4.y] -= 0.20;
     state.player.update();
 
     w4.PALETTE.* = color_themes[0];
@@ -66,7 +66,7 @@ const Vec2f = std.meta.Vector(2, f32);
 const Player = struct {
     pos: Vec2f = Vec2f{100, -100},
     vel: Vec2f = Vec2f{0, 0},
-    size: w4.Vec2 = w4.Vec2{6, 6},
+    size: w4.Vec2 = w4.Vec2{4, 4},
     on_ground: u8 = 0,
 
     pub fn posInt(player: Player) w4.Vec2 {
