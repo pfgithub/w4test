@@ -91,7 +91,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
         const value1: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         const value2: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         if(value0 == value1 and value1 == value2) {
-            var total: u9 = 2;
+            var total: u9 = 3;
             while(true) {
                 if(total == std.math.maxInt(u9)) break;
                 const next = reader.readBitsNoEof(u2, 2) catch break;
@@ -101,8 +101,8 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
                 }
                 total += 1;
             }
-            try writer.writeBits(@as(u1, 0b0), 0);
-            try writer.writeBits(@as(u2, value0), 2);
+            try writer.writeBits(@as(u1, 0b0), 1);
+            try writer.writeBits(value0, 2);
             try writer.writeBits(total, 9);
             if(total > highest_total) highest_total = total;
         }else{
