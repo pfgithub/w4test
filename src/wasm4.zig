@@ -13,6 +13,81 @@ pub const y = 1;
 
 pub const CANVAS_SIZE = 160;
 
+// Helpers
+
+const w4 = @This();
+const std = @import("std");
+
+pub const Mbl = enum{mut, cons};
+pub fn Tex(comptime mbl: Mbl) type {return struct {
+    // oh that's really annoying…
+    // ideally there would be a way to have a readonly Tex and a mutable Tex
+    // and the mutable should implicit cast to readonly
+    data: switch(mbl) {
+        .mut => [*]u8,
+        .cons => [*]const u8,
+    },
+    size: Vec2,
+
+    pub fn wrapSlice(slice: switch(mbl) {
+        .mut => []u8,
+        .cons => []const u8,
+    }, comptime size: Vec2) Tex(.cons) {
+        if(slice.len != std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable) {
+            unreachable;
+        }
+        return .{
+            .data = slice.ptr,
+            .size = size,
+        };
+    }
+
+    pub fn cons(tex: Tex(.mut)) Tex(.cons) {
+        return .{
+            .data = tex.data,
+            .size = tex.size,
+        };
+    }
+
+    pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3) void {
+        for(range(@intCast(usize, src_wh[y]))) |_, y_usz| {
+            const yp = @intCast(i32, y_usz);
+            for(range(@intCast(usize, src_wh[x]))) |_, x_usz| {
+                const xp = @intCast(i32, x_usz);
+                const pos = Vec2{xp, yp};
+
+                const value = remap_colors[src.get(src_ul + pos)];
+                if(value <= std.math.maxInt(u2)) { 
+                    dest.set(dest_ul + pos, @intCast(u2, value));
+                }
+            }
+        }
+    }
+    pub fn get(tex: Tex(mbl), pos: Vec2) u2 {
+        if(@reduce(.Or, pos < w4.Vec2{0, 0})) return 0;
+        if(@reduce(.Or, pos >= tex.size)) return 0;
+        const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+        const index = @intCast(usize, @divFloor(index_unscaled, 4));
+        const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+        return @truncate(u2, tex.data[index] >> byte_idx);
+    }
+    pub fn set(tex: Tex(.mut), pos: Vec2, value: u2) void {
+        if(@reduce(.Or, pos < w4.Vec2{0, 0})) return;
+        if(@reduce(.Or, pos >= tex.size)) return;
+        const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+        const index = @intCast(usize, @divFloor(index_unscaled, 4));
+        const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+        tex.data[index] &= ~(@as(u8, 0b11) << byte_idx);
+        tex.data[index] |= @as(u8, value) << byte_idx;
+    }
+};}
+
+pub fn range(len: usize) []const void {
+    return @as([*]const void, &[_]void{})[0..len];
+}
+
+// pub const Tex1BPP = struct {…};
+
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
 // │ Memory Addresses                                                          │
@@ -29,6 +104,10 @@ pub const GAMEPAD4: *const Gamepad = @intToPtr(*const Gamepad, 0x19);
 pub const MOUSE: *const Mouse = @intToPtr(*const Mouse, 0x1a);
 pub const SYSTEM_FLAGS: *SystemFlags = @intToPtr(*SystemFlags, 0x1f);
 pub const FRAMEBUFFER: *[CANVAS_SIZE * CANVAS_SIZE / 4]u8 = @intToPtr(*[6400]u8, 0xA0);
+pub const ctx = Tex(.mut){
+    .data = @intToPtr([*]u8, 0xA0), // apparently casting *[N]u8 to [*]u8 at comptime causes a compiler crash
+    .size = .{CANVAS_SIZE, CANVAS_SIZE},
+};
 
 pub const Gamepad = packed struct {
     button_1: bool,
