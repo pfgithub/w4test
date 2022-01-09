@@ -36,10 +36,10 @@ export fn update() void {
 
     var xvel: f32 = 0;
     if(w4.GAMEPAD1.button_left) {
-        xvel -= 1;
+        xvel -= 1.5;
     }
     if(w4.GAMEPAD1.button_right) {
-        xvel += 1;
+        xvel += 1.5;
     }
     state.player.vel[w4.x] = xvel;
     if(w4.GAMEPAD1.button_up and state.player.on_ground <= 6) {
