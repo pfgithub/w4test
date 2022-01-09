@@ -26,6 +26,8 @@
 const std = @import("std");
 const w4 = @import("wasm4.zig");
 
+const dev_mode = true;
+
 // var alloc_buffer: [1000]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
@@ -105,6 +107,21 @@ export fn update() void {
         state.frame = 0;
     }
 
+    if(dev_mode) {
+        if(w4.GAMEPAD2.button_left) {
+            state.player.pos[w4.x] -= 1;
+        }
+        if(w4.GAMEPAD2.button_right) {
+            state.player.pos[w4.x] += 1;
+        }
+        if(w4.GAMEPAD2.button_up) {
+            state.player.pos[w4.y] += 1;
+        }
+        if(w4.GAMEPAD2.button_down) {
+            state.player.pos[w4.y] -= 1;
+        }
+    }
+
     if(!state.player.dash_used and w4.GAMEPAD1.button_1) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
@@ -143,6 +160,7 @@ export fn update() void {
     w4.PALETTE.* = color_themes[0];
     w4.DRAW_COLORS.* = 0x22;
 
+    w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
     w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
 
     const player_color: u3 = if(magnitude(state.player.vel_dash) >= 0.3) 3 else 1;
