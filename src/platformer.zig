@@ -45,19 +45,39 @@ export fn update() void {
         state.frame = 0;
     }
 
-    var xvel: f32 = 0;
+    if(!state.player.dash_used and w4.GAMEPAD1.button_1) {
+        var dir = Vec2f{0, 0};
+        if(w4.GAMEPAD1.button_left) {
+            dir[w4.x] -= 1;
+        }
+        if(w4.GAMEPAD1.button_right) {
+            dir[w4.x] += 1;
+        }
+        if(w4.GAMEPAD1.button_up) {
+            dir[w4.y] += 1;
+        }
+        if(w4.GAMEPAD1.button_down) {
+            dir[w4.y] -= 1;
+        }
+        if(dir[w4.x] != 0 or dir[w4.y] != 0) {
+            dir = normalize(dir);
+            state.player.dash_used = true;
+            state.player.vel_dash = dir * @splat(2, @as(f32, 2.2));
+            state.player.vel_gravity = Vec2f{0, 0};
+        }
+    }
     if(w4.GAMEPAD1.button_left) {
-        xvel -= 1;
+        state.player.vel_instant += Vec2f{-1, 0};
     }
     if(w4.GAMEPAD1.button_right) {
-        xvel += 1;
+        state.player.vel_instant += Vec2f{1, 0};
     }
-    state.player.vel[w4.x] = xvel;
-    if(w4.GAMEPAD1.button_up and state.player.on_ground <= 6) {
-        state.player.vel[w4.y] = 2.2;
+    if(!state.player.jump_used and w4.GAMEPAD1.button_up and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
+        state.player.vel_gravity[w4.y] = 2.2;
         state.player.on_ground = std.math.maxInt(u8);
+        state.player.jump_used = true;
     }
-    state.player.vel[w4.y] -= 0.20;
+    if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
     state.player.update();
 
     w4.PALETTE.* = color_themes[0];
@@ -65,20 +85,37 @@ export fn update() void {
 
     w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
 
-    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, state.player.size, .{1, 1, 1, 1}, .{2, 2});
+    const player_color: u3 = if(magnitude(state.player.vel_dash) >= 0.3) 3 else 1;
+    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, level_1_collision_map, .{0, 0}, state.player.size, .{
+        player_color,
+        player_color,
+        player_color,
+        player_color,
+    }, .{2, 2});
 }
 
 fn sign(x: anytype) @TypeOf(x) {
     return if(x > 0) 1 else if(x == 0) @as(@TypeOf(x), 0) else -1;
+}
+fn normalize(vec: Vec2f) Vec2f {
+    if(vec[w4.x] == 0 and vec[w4.y] == 0) return Vec2f{0, 0};
+    return vec / @splat(2, magnitude(vec));
+}
+fn magnitude(vec: Vec2f) f32 {
+    return @sqrt(vec[w4.x] * vec[w4.x] + vec[w4.y] * vec[w4.y]);
 }
 
 const Vec2f = std.meta.Vector(2, f32);
 
 const Player = struct {
     pos: Vec2f = Vec2f{100, -100},
-    vel: Vec2f = Vec2f{0, 0},
+    vel_gravity: Vec2f = Vec2f{0, 0},
+    vel_instant: Vec2f = Vec2f{0, 0},
+    vel_dash: Vec2f = Vec2f{0, 0},
     size: w4.Vec2 = w4.Vec2{4, 4},
     on_ground: u8 = 0,
+    dash_used: bool = false,
+    jump_used: bool = false,
 
     pub fn posInt(player: Player) w4.Vec2 {
         return w4.Vec2{
@@ -88,11 +125,13 @@ const Player = struct {
     }
 
     pub fn update(player: *Player) void {
-        player.vel = @minimum(Vec2f{100, 100}, player.vel);
-        player.vel = @maximum(Vec2f{-100, -100}, player.vel);
+        player.vel_gravity = @minimum(Vec2f{100, 100}, player.vel_gravity);
+        player.vel_gravity = @maximum(Vec2f{-100, -100}, player.vel_gravity);
 
-        const step_x_count = @ceil(std.math.fabs(player.vel[w4.x]));
-        const step_x = if(step_x_count == 0) @as(f32, 0) else player.vel[w4.x] / step_x_count;
+        const vec_instant = player.vel_gravity + player.vel_instant + player.vel_dash;
+
+        const step_x_count = @ceil(std.math.fabs(vec_instant[w4.x]));
+        const step_x = if(step_x_count == 0) @as(f32, 0) else vec_instant[w4.x] / step_x_count;
         for(w4.range(@floatToInt(usize, @ceil(step_x_count)))) |_| {
             player.pos[w4.x] += step_x;
             if(player.colliding()) {
@@ -106,8 +145,8 @@ const Player = struct {
                 }
             }
         }
-        const step_y_count = @ceil(std.math.fabs(player.vel[w4.y]));
-        const step_y = if(step_y_count == 0) @as(f32, 0) else player.vel[w4.y] / step_y_count;
+        const step_y_count = @ceil(std.math.fabs(vec_instant[w4.y]));
+        const step_y = if(step_y_count == 0) @as(f32, 0) else vec_instant[w4.y] / step_y_count;
         for(w4.range(@floatToInt(usize, step_y_count))) |_| {
             player.pos[w4.y] += step_y;
             if(player.colliding()) {
@@ -117,14 +156,25 @@ const Player = struct {
                     player.pos[w4.x] -= v;
                 }else{
                     player.pos[w4.y] -= step_y;
-                    player.vel[w4.y] = 0;
-                    if(step_y < 0) player.on_ground = 0;
+                    player.vel_gravity[w4.y] = 0;
+                    if(step_y < 0) {
+                        player.on_ground = 0;
+                    }
                     break;
                 }
             }else{
-            player.on_ground +|= 1;
+                player.on_ground +|= 1;
             }
         }
+        if(player.on_ground == 0) {
+            player.dash_used = false;
+            player.vel_gravity[w4.x] *= 0.9;
+        }else{
+            player.vel_gravity[w4.x] *= 0.8;
+        }
+        player.vel_dash *= @splat(2, @as(f32, 0.9));
+        player.vel_instant = Vec2f{0, 0};
+        if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
     }
     pub fn colliding(player: *Player) bool {
         const pos = player.posInt();

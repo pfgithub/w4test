@@ -58,8 +58,18 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
 
                 const value = remap_colors[src.get(src_ul + pos)];
                 if(value <= std.math.maxInt(u2)) { 
-                    dest.set((dest_ul + pos) * scale, @intCast(u2, value));
+                    dest.rect((dest_ul + pos) * scale, scale, @intCast(u2, value));
                 }
+            }
+        }
+    }
+    pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: u2) void {
+        for(range(std.math.lossyCast(usize, wh[y]))) |_, y_usz| {
+            const yp = @intCast(i32, y_usz);
+            for(range(std.math.lossyCast(usize, wh[x]))) |_, x_usz| {
+                const xp = @intCast(i32, x_usz);
+
+                dest.set(ul + Vec2{xp, yp}, color);
             }
         }
     }
