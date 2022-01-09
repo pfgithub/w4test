@@ -170,6 +170,14 @@ export fn update() void {
         player_color,
         player_color,
     }, .{2, 2});
+
+    // for(w4.range(160)) |_, y| {
+    //     for(w4.range(160)) |_, x| {
+    //         if(x % 2 == y % 2) {
+    //             w4.ctx.set(w4.Vec2{@intCast(i32, x), @intCast(i32, y)}, 0b00);
+    //         }
+    //     }
+    // }
 }
 
 fn sign(x: anytype) @TypeOf(x) {
