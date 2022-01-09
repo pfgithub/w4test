@@ -80,6 +80,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
     var remains: ?u2 = null;
 
     var highest_total: u9 = 0;
+    var raw_count: usize = 0;
 
     while(true) {
         const value0: u2 = if(remains) |rem| blk: {
@@ -89,9 +90,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
         const value1: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         const value2: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         if(value0 == value1 and value1 == value2) {
-            try writer.writeBits(@as(u1, 0b0), 1);
-
-            var total: u9 = 3;
+            var total: u9 = 2;
             while(true) {
                 if(total == std.math.maxInt(u9)) break;
                 const next = reader.readBitsNoEof(u2, 2) catch break;
@@ -101,6 +100,8 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
                 }
                 total += 1;
             }
+            try writer.writeBits(@as(u1, 0b0), 1);
+            try writer.writeBits(@as(u2, value0), 2);
             try writer.writeBits(total, 9);
             if(total > highest_total) highest_total = total;
         }else{
@@ -109,6 +110,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
             try writer.writeBits(value0, 2);
             try writer.writeBits(value1, 2);
             try writer.writeBits(value2, 2);
+            raw_count += 1;
         }
     }
     // we're going to read 3 into an arraylist
@@ -118,7 +120,8 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
     // - keep reading values until the next different value or 
 
     std.log.info("Compression info:", .{});
-    std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u13)});
+    std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u9)});
+    std.log.info("- raw nodes: {}", .{raw_count});
 
     // note: we don't care about the ending because the reader knows how many
     // bytes it's expecting.
