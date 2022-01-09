@@ -195,31 +195,32 @@ fn rgbToHsl(rgb: [3]u8) [3]f32 {
     var r = @intToFloat(f32, rgb[0]) / 255;
     var g = @intToFloat(f32, rgb[1]) / 255;
     var b = @intToFloat(f32, rgb[2]) / 255;
+    return .{r, g, b};
 
-    var max = @maximum(@maximum(r, g), b);
-    var min = @minimum(@minimum(r, g), b);
+    // var max = @maximum(@maximum(r, g), b);
+    // var min = @minimum(@minimum(r, g), b);
 
-    var h = (max + min) / 2;
-    var s = (max + min) / 2;
-    var l = (max + min) / 2;
+    // var h = (max + min) / 2;
+    // var s = (max + min) / 2;
+    // var l = (max + min) / 2;
 
-    if(max == min) {
-        h = 0;
-        s = 0;
-    }else{
-        var d = max - min;
-        s = if(l > 0.5) d / (2.0 - max - min) else d / (max + min);
-        if(max == r) {
-            h = (g - b) / d + if(g < b) @as(f32, 6) else 0;
-        }else if(max == g) {
-            h = (b - r) / d + 2;
-        }else if(max == b) {
-            h = (r - g) / d + 4;
-        }else unreachable;
-        h /= 6;
-    }
+    // if(max == min) {
+    //     h = 0;
+    //     s = 0;
+    // }else{
+    //     var d = max - min;
+    //     s = if(l > 0.5) d / (2.0 - max - min) else d / (max + min);
+    //     if(max == r) {
+    //         h = (g - b) / d + if(g < b) @as(f32, 6) else 0;
+    //     }else if(max == g) {
+    //         h = (b - r) / d + 2;
+    //     }else if(max == b) {
+    //         h = (r - g) / d + 4;
+    //     }else unreachable;
+    //     h /= 6;
+    // }
 
-    return .{h, s, l};
+    // return .{h, s, l};
 }
 fn interpolate(a: f32, b: f32, t: f32) f32 {
     return a * (1 - t) + b * t;
@@ -232,24 +233,29 @@ fn hslInterpolate(a: [3]f32, b: [3]f32, t: f32) [3]f32 {
     };
 }
 fn hslToRgb(hsl: [3]f32) [3]u8 {
-    if(hsl[1] == 0) {
-        return .{
-            std.math.lossyCast(u8, hsl[2] * 255),
-            std.math.lossyCast(u8, hsl[2] * 255),
-            std.math.lossyCast(u8, hsl[2] * 255),
-        };
-    }else{
-        var q = if(hsl[2] < 0.5) hsl[2] * (1.0 + hsl[1]) else hsl[2] + hsl[1] - hsl[2] * hsl[1];
-        var p = 2.0 * hsl[2] - q;
-        var r = hslToRgbHelper(p, q, hsl[0] + 1.0 / 3.0);
-        var g = hslToRgbHelper(p, q, hsl[0]);
-        var b = hslToRgbHelper(p, q, hsl[0] - 1.0 / 3.0);
-        return .{
-            std.math.lossyCast(u8, r * 255),
-            std.math.lossyCast(u8, g * 255),
-            std.math.lossyCast(u8, b * 255),
-        };
-    }
+    return .{
+        std.math.lossyCast(u8, hsl[0] * 255),
+        std.math.lossyCast(u8, hsl[1] * 255),
+        std.math.lossyCast(u8, hsl[2] * 255),
+    };
+    // if(hsl[1] == 0) {
+    //     return .{
+    //         std.math.lossyCast(u8, hsl[2] * 255),
+    //         std.math.lossyCast(u8, hsl[2] * 255),
+    //         std.math.lossyCast(u8, hsl[2] * 255),
+    //     };
+    // }else{
+    //     var q = if(hsl[2] < 0.5) hsl[2] * (1.0 + hsl[1]) else hsl[2] + hsl[1] - hsl[2] * hsl[1];
+    //     var p = 2.0 * hsl[2] - q;
+    //     var r = hslToRgbHelper(p, q, hsl[0] + 1.0 / 3.0);
+    //     var g = hslToRgbHelper(p, q, hsl[0]);
+    //     var b = hslToRgbHelper(p, q, hsl[0] - 1.0 / 3.0);
+    //     return .{
+    //         std.math.lossyCast(u8, r * 255),
+    //         std.math.lossyCast(u8, g * 255),
+    //         std.math.lossyCast(u8, b * 255),
+    //     };
+    // }
 }
 fn hslToRgbHelper(p: f32, q: f32, t_0: f32) f32 {
     var t = t_0;
