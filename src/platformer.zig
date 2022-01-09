@@ -195,6 +195,8 @@ const Player = struct {
     dash_used: bool = false,
     jump_used: bool = false,
 
+    vel_instant_prev: Vec2f = Vec2f{0, 0},
+
     pub fn posInt(player: Player) w4.Vec2 {
         return w4.Vec2{
             @floatToInt(i32, player.pos[w4.x]),
@@ -205,6 +207,10 @@ const Player = struct {
     pub fn update(player: *Player) void {
         player.vel_gravity = @minimum(Vec2f{100, 100}, player.vel_gravity);
         player.vel_gravity = @maximum(Vec2f{-100, -100}, player.vel_gravity);
+
+        if(player.vel_instant[w4.x] == 0) {
+            player.vel_instant[w4.x] = player.vel_instant_prev[w4.x];
+        }
 
         const vec_instant = player.vel_gravity + player.vel_instant + player.vel_dash;
 
@@ -244,14 +250,22 @@ const Player = struct {
                 player.on_ground +|= 1;
             }
         }
+        if(step_y == 0) {
+            player.pos[w4.y] -= 1;
+            if(!player.colliding()) {
+                player.on_ground +|= 1;
+            }
+            player.pos[w4.y] += 1;
+        }
+        player.vel_instant_prev = player.vel_instant;
+        player.vel_instant = Vec2f{0, 0};
         if(player.on_ground == 0) {
             player.dash_used = false;
-            player.vel_gravity[w4.x] *= 0.9;
+            player.vel_instant_prev[w4.x] *= 0.7;
         }else{
-            player.vel_gravity[w4.x] *= 0.8;
+            player.vel_instant_prev[w4.x] *= 0.95;
         }
         player.vel_dash *= @splat(2, @as(f32, 0.9));
-        player.vel_instant = Vec2f{0, 0};
         if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
     }
     pub fn colliding(player: *Player) bool {
