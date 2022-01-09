@@ -157,7 +157,7 @@ export fn update() void {
     if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
     state.player.update();
 
-    w4.PALETTE.* = color_themes[0];
+    w4.PALETTE.* = color_themes[3];
     w4.DRAW_COLORS.* = 0x22;
 
     w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
