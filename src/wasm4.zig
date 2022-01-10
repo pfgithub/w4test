@@ -58,7 +58,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
 
                 const value = remap_colors[src.get(src_ul + pos)];
                 if(value <= std.math.maxInt(u2)) { 
-                    dest.rect((dest_ul + pos) * scale, scale, @intCast(u2, value));
+                    dest.rect(pos * scale + dest_ul, scale, @intCast(u2, value));
                 }
             }
         }

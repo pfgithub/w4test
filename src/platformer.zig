@@ -155,7 +155,7 @@ export fn update() void {
     if(w4.GAMEPAD1.button_right) {
         state.player.vel_instant += Vec2f{1, 0};
     }
-    if(!state.player.jump_used and w4.GAMEPAD1.button_up and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
+    if(!state.player.jump_used and (w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_2) and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
         state.player.vel_gravity[w4.y] = 2.2;
         state.player.on_ground = std.math.maxInt(u8);
         state.player.jump_used = true;
@@ -170,15 +170,25 @@ export fn update() void {
     w4.DRAW_COLORS.* = 0x22;
 
     w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
-    w4.ctx.blit(-state.player.posInt() + w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2});
+    w4.ctx.blit(
+        -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{81, 81},
+        decompressed_image.?.cons(),
+        .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2},
+    );
 
     const player_color: u3 = if(state.player.dash_used) 3 else 1;
-    w4.ctx.blit(w4.Vec2{80, 80} - w4.Vec2{40, 40}, decompressed_image.?.cons(), .{0, 0}, state.player.size, .{
-        player_color,
-        player_color,
-        player_color,
-        player_color,
-    }, .{2, 2});
+    w4.ctx.blit(
+        w4.Vec2{80, 80},
+        decompressed_image.?.cons(),
+        .{0, 0},
+        state.player.size,
+        .{
+            player_color,
+            player_color,
+            player_color,
+            player_color,
+        }, .{2, 2},
+    );
 
     // for(w4.range(160)) |_, y| {
     //     for(w4.range(160)) |_, x| {
@@ -308,10 +318,10 @@ const Player = struct {
 
     vel_instant_prev: Vec2f = Vec2f{0, 0},
 
-    pub fn posInt(player: Player) w4.Vec2 {
+    pub fn posInt(player: Player, scale: w4.Vec2) w4.Vec2 {
         return w4.Vec2{
-            @floatToInt(i32, player.pos[w4.x]),
-            @floatToInt(i32, -player.pos[w4.y]),
+            @floatToInt(i32, player.pos[w4.x] * @intToFloat(f32, scale[w4.x])),
+            @floatToInt(i32, -player.pos[w4.y] * @intToFloat(f32, scale[w4.y])),
         };
     }
 
@@ -380,7 +390,7 @@ const Player = struct {
         if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
     }
     pub fn colliding(player: *Player) bool {
-        const pos = player.posInt();
+        const pos = player.posInt(.{1, 1});
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
             const value = decompressed_image.?.get(pos + w4.Vec2{
                 @intCast(i32, x),
