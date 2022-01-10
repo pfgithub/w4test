@@ -171,7 +171,7 @@ export fn update() void {
 
     w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
     w4.ctx.blit(
-        -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{81, 81},
+        -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{80, 80},
         decompressed_image.?.cons(),
         .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2},
     );
@@ -181,13 +181,13 @@ export fn update() void {
         w4.Vec2{80, 80},
         decompressed_image.?.cons(),
         .{0, 0},
-        state.player.size,
+        state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
         .{
             player_color,
             player_color,
             player_color,
             player_color,
-        }, .{2, 2},
+        }, .{1, 1},
     );
 
     // for(w4.range(160)) |_, y| {
@@ -335,7 +335,7 @@ const Player = struct {
 
         const vec_instant = player.vel_gravity + player.vel_instant + player.vel_dash;
 
-        const step_x_count = @ceil(std.math.fabs(vec_instant[w4.x]));
+        const step_x_count = @ceil(std.math.fabs(vec_instant[w4.x])) * 2;
         const step_x = if(step_x_count == 0) @as(f32, 0) else vec_instant[w4.x] / step_x_count;
         for(w4.range(@floatToInt(usize, @ceil(step_x_count)))) |_| {
             player.pos[w4.x] += step_x;
@@ -350,7 +350,7 @@ const Player = struct {
                 }
             }
         }
-        const step_y_count = @ceil(std.math.fabs(vec_instant[w4.y]));
+        const step_y_count = @ceil(std.math.fabs(vec_instant[w4.y])) * 2;
         const step_y = if(step_y_count == 0) @as(f32, 0) else vec_instant[w4.y] / step_y_count;
         for(w4.range(@floatToInt(usize, step_y_count))) |_| {
             player.pos[w4.y] += step_y;
