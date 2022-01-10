@@ -47,10 +47,16 @@ fn decompressionData(size_0: w4.Vec2) type {
                 .size = size,
             };
         }
+        pub fn tex(dcd: @This()) w4.Tex(.cons) {
+            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
+        }
+        pub fn texMut(dcd: *@This()) w4.Tex(.cons) {
+            return w4.Tex(.cons).wrapSliceMut(&dcd.data, size);
+        }
     };
 }
 
-fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
+fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
     var fbs_in = std.io.fixedBufferStream(compressed_in);
     var reader = std.io.bitReader(.Little, fbs_in.reader());
 
@@ -77,9 +83,6 @@ fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !w4.Tex(
             },
         }
     }
-
-    // done!
-    return w4.Tex(.mut).wrapSlice(dcd.data_out, dcd.size);
 }
 
 const levels_raw = @embedFile("platformer.w4i");
@@ -91,15 +94,11 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-var level_ul_data: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_ur_data: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_bl_data: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_br_data: decompressionData(w4.Vec2{160, 160}) = .{};
-
-var level_ul: w4.Tex(.mut) = undefined;
-var level_ur: w4.Tex(.mut) = undefined;
-var level_bl: w4.Tex(.mut) = undefined;
-var level_br: w4.Tex(.mut) = undefined;
+var level_0: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_1: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_2: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_3: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_phase: u2 = 0; // the phase defines which level is the center
 
 var decompressed_image: ?w4.Tex(.mut) = null;
 
@@ -108,29 +107,35 @@ export fn start() void {
 
     // then, just reload levels when the person gets near an edge
 
-    level_ul = decompress(
+    decompress(
         levels_data[getLevelIndex(0)..getLevelIndex(1)],
-        level_ul_data.runtime(),
+        level_0.runtime(),
     ) catch unreachable;
-    level_ur = decompress(
+    decompress(
         levels_data[getLevelIndex(1)..getLevelIndex(2)],
-        level_ur_data.runtime(),
+        level_1.runtime(),
     ) catch unreachable;
-    level_bl = decompress(
+    decompress(
         levels_data[getLevelIndex(10)..getLevelIndex(11)],
-        level_bl_data.runtime(),
+        level_2.runtime(),
     ) catch unreachable;
-    level_br = decompress(
+    decompress(
         levels_data[getLevelIndex(11)..getLevelIndex(12)],
-        level_br_data.runtime(),
+        level_3.runtime(),
     ) catch unreachable;
 }
 
 fn getWorldPixel(pos: w4.Vec2) u2 {
-    if(pos[w4.x] >= 160) {
-        return level_ur.get(pos + w4.Vec2{-160, 0});
+    if(pos[w4.x] >= 160 and pos[w4.y] >= 160) {
+        return level_3.tex().get(pos + w4.Vec2{-160, -160});
     }
-    return level_ul.get(pos);
+    if(pos[w4.x] >= 160) {
+        return level_1.tex().get(pos + w4.Vec2{-160, 0});
+    }
+    if(pos[w4.y] >= 160) {
+        return level_2.tex().get(pos + w4.Vec2{0, -160});
+    }
+    return level_0.tex().get(pos);
 }
 
 export fn update() void {
@@ -202,7 +207,7 @@ export fn update() void {
     // w4.PALETTE.* = color_themes[4];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(w4.Vec2{0, 0}, level_ul.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
+    w4.ctx.blit(w4.Vec2{0, 0}, level_0.tex(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
 
     // w4.ctx.shader(|x, y| {})
     for(w4.range(160)) |_, y_usz| {
@@ -228,7 +233,7 @@ export fn update() void {
     const player_color: u3 = if(state.player.dash_used) 2 else 1;
     w4.ctx.blit(
         w4.Vec2{80, 80},
-        level_ul.cons(),
+        level_0.tex(),
         .{0, 0},
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
         .{
