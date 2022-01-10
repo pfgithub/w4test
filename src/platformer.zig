@@ -25,76 +25,13 @@
 
 const std = @import("std");
 const w4 = @import("wasm4.zig");
+const img = @import("imgconv.zig");
 
 const dev_mode = true;
 
 // var alloc_buffer: [1000]u8 = undefined;
 
 var arena: ?std.mem.Allocator = null;
-
-const DecompressionDataRuntime = struct {
-    size: w4.Vec2,
-    data_out: []u8,
-};
-
-fn decompressionData(size_0: w4.Vec2) type {
-    return struct {
-        pub const size = size_0;
-        data: [std.math.divCeil(comptime_int, size[0] * size[1] * 2, 8) catch unreachable]u8 = undefined,
-        fn runtime(self: *@This()) DecompressionDataRuntime {
-            return .{
-                .data_out = &self.data,
-                .size = size,
-            };
-        }
-        pub fn tex(dcd: @This()) w4.Tex(.cons) {
-            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
-        }
-        pub fn texMut(dcd: *@This()) w4.Tex(.cons) {
-            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
-        }
-    };
-}
-
-fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
-    var fbs_in = std.io.fixedBufferStream(compressed_in);
-    var reader = std.io.bitReader(.Little, fbs_in.reader());
-
-    var fbs_out = std.io.fixedBufferStream(dcd.data_out);
-    var writer = std.io.bitWriter(.Little, fbs_out.writer());
-
-    var written_count: usize = 0;
-
-    const tag = try reader.readBitsNoEof(u8, 8);
-    if(tag != 0b10001000) return error.BadInput;
-
-    whlp: while(true) {
-        const mode = reader.readBitsNoEof(u1, 1) catch break :whlp;
-        switch(mode) {
-            0 => {
-                const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
-                const len_len = reader.readBitsNoEof(u1, 1) catch break :whlp;
-                const len = reader.readBitsNoEof(u14, switch(len_len) {
-                    0 => @as(u8, 9),
-                    1 => 14,
-                }) catch break :whlp;
-                for(w4.range(len)) |_| {
-                    writer.writeBits(value, 2) catch break :whlp;
-                    written_count += 1;
-                }
-            },
-            1 => {
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
-                written_count += 1;
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
-                written_count += 1;
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
-                written_count += 1;
-            },
-        }
-    }
-    if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
-}
 
 const levels_raw = @embedFile("platformer.w4i");
 const levels_indices_u8 = levels_raw[0..101 * @sizeOf(u32)];
@@ -105,13 +42,15 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-const LevelTex = decompressionData(w4.Vec2{160, 160});
+const LevelTex = img.decompressionData(w4.Vec2{160, 160});
 var levels: [4]LevelTex = .{
     .{},
     .{},
     .{},
     .{},
 };
+// TODO: this takes up like 51kb in memory… that's most of the memory…
+// since we're doing 2x zoom, consider using 80x80 rather than 160x160
 var level_ul: *LevelTex = undefined;
 var level_ur: *LevelTex = undefined;
 var level_bl: *LevelTex = undefined;
@@ -127,7 +66,7 @@ fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
 
     const index = @intCast(usize, y * 10 + x);
 
-    decompress(
+    img.decompress(
         levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
         ptr.runtime(),
     ) catch unreachable;

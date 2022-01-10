@@ -1,4 +1,9 @@
-// zig run src/imgconv.zig src/stb_image.c -Isrc -lc -- image1.png image1.w4i
+//! zig run src/imgconv.zig src/stb_image.c -Isrc -lc -- image1.png image1.w4i
+const c = @cImport({
+    @cInclude("stb_image.h");
+});
+const std = @import("std");
+const w4 = @import("wasm4.zig");
 
 // TODO: support 1bpp, 2bpp, specifying colors, and basic compression
 
@@ -60,6 +65,71 @@
 //
 // nice, simple, 1-pass compression and decompression
 
+pub const DecompressionDataRuntime = struct {
+    size: w4.Vec2,
+    data_out: []u8,
+};
+
+pub fn decompressionData(size_0: w4.Vec2) type {
+    return struct {
+        pub const size = size_0;
+        data: [std.math.divCeil(comptime_int, size[0] * size[1] * 2, 8) catch unreachable]u8 = undefined,
+        pub fn runtime(self: *@This()) DecompressionDataRuntime {
+            return .{
+                .data_out = &self.data,
+                .size = size,
+            };
+        }
+        pub fn tex(dcd: @This()) w4.Tex(.cons) {
+            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
+        }
+        pub fn texMut(dcd: *@This()) w4.Tex(.cons) {
+            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
+        }
+    };
+}
+
+pub fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
+    var fbs_in = std.io.fixedBufferStream(compressed_in);
+    var reader = std.io.bitReader(.Little, fbs_in.reader());
+
+    var fbs_out = std.io.fixedBufferStream(dcd.data_out);
+    var writer = std.io.bitWriter(.Little, fbs_out.writer());
+
+    var written_count: usize = 0;
+
+    const tag = try reader.readBitsNoEof(u8, 8);
+    if(tag != 0b10001000) return error.BadInput;
+
+    whlp: while(true) {
+        const mode = reader.readBitsNoEof(u1, 1) catch break :whlp;
+        switch(mode) {
+            0 => {
+                const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
+                const len_len = reader.readBitsNoEof(u1, 1) catch break :whlp;
+                const len = reader.readBitsNoEof(u14, switch(len_len) {
+                    0 => @as(u8, 9),
+                    1 => 14,
+                }) catch break :whlp;
+                for(w4.range(len)) |_| {
+                    writer.writeBits(value, 2) catch break :whlp;
+                    written_count += 1;
+                }
+            },
+            1 => {
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
+                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
+            },
+        }
+    }
+    std.log.debug("decompression read {d}/{d}", .{written_count, dcd.size[0] * dcd.size[1]});
+    if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
+}
+
 /// output:
 /// [0b10001000]
 /// []node
@@ -68,7 +138,7 @@
 ///   | 0b0 u2 u9
 ///   | 0b10 u2 u2 u2
 ///   | 0b11 never
-fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
+fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]const u8 {
     var fbs = std.io.fixedBufferStream(data);
     var reader = std.io.bitReader(.Little, fbs.reader());
 
@@ -82,6 +152,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
     var highest_total: u14 = 0;
     var raw_count: usize = 0;
     var total_count: usize = 0;
+    var written_count: usize = 0;
 
     while(true) {
         const value0: u2 = if(remains) |rem| blk: {
@@ -109,11 +180,12 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
             try writer.writeBits(value0, 2);
             if(total <= std.math.maxInt(u9)) {
                 try writer.writeBits(@as(u1, 0), 1);
-                try writer.writeBits(@intCast(u9, total), 9);
+                try writer.writeBits(total, 9);
             }else{
                 try writer.writeBits(@as(u1, 1), 1);
                 try writer.writeBits(total, 14);
             }
+            written_count += total;
             if(total > highest_total) highest_total = total;
         }else{
             try writer.writeBits(@as(u1, 0b1), 1); // actually i have decided i don't care
@@ -122,6 +194,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
             try writer.writeBits(value1, 2);
             try writer.writeBits(value2, 2);
             raw_count += 1;
+            written_count += 3;
         }
         total_count += 1;
     }
@@ -138,6 +211,9 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
     // note: we don't care about the ending because the reader knows how many
     // bytes it's expecting.
 
+    std.log.debug("compression coded for {d}/{d}", .{written_count, size[0] * size[1]});
+    if(written_count < size[0] * size[1]) unreachable;
+
     return al.toOwnedSlice();
 }
 
@@ -146,11 +222,6 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
 // fn compress1bpp(reader) void {
 //     const value = reader.readBits(u1);
 // }
-
-const c = @cImport({
-    @cInclude("stb_image.h");
-});
-const std = @import("std");
 
 fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
     const pixel = image[(y * w + x) * 3..][0..2];
@@ -166,6 +237,35 @@ fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
     };
 }
 
+fn expectEqualImages(expected: []const u8, data: []const u8, size: w4.Vec2) !void {
+    var fbs1 = std.io.fixedBufferStream(data);
+    var fbs2 = std.io.fixedBufferStream(expected);
+
+    var bit_reader_1 = std.io.bitReader(.Little, fbs1.reader());
+    var bit_reader_2 = std.io.bitReader(.Little, fbs2.reader());
+
+    var i: i32 = size[0] * size[1];
+    while(i > 0) : (i -= 1) {
+        const value1 = bit_reader_1.readBitsNoEof(u2, 2) catch break;
+        const value2 = bit_reader_2.readBitsNoEof(u2, 2) catch break;
+        if(value1 != value2) {
+            std.log.err("error; at index {d} expected {b:0>2}, got {b:0>2}", .{i, value2, value1});
+            return error.TestFailed;
+        }
+    }
+}
+
+pub fn verifyCompression(alloc: std.mem.Allocator, expected: []const u8, compressed: []const u8, size: w4.Vec2) !void {
+    const data = alloc.alloc(u8, expected.len) catch @panic("oom");
+    for(data) |*v| v.* = 0b01;
+    try decompress(compressed, .{
+        .size = size,
+        .data_out = data,
+    });
+
+    try expectEqualImages(expected, data, size);
+}
+
 pub fn range(len: usize) []const void {
     return @as([*]const void, &[_]void{})[0..len];
 }
@@ -175,19 +275,24 @@ pub fn processSubimage(
     image: []const u8,
     ul_x: usize, ul_y: usize,
     ul_w: usize, ul_h: usize,
-    total_w: usize,
+    size: w4.Vec2,
 ) ![]const u8 {
     var al = std.ArrayList(u8).init(alloc);
     var bit_stream_be = std.io.bitWriter(.Little, al.writer());
+    const subsize = w4.Vec2{
+        @intCast(i32, ul_w),
+        @intCast(i32, ul_h),
+    };
 
     for(range(ul_h)) |_, y| {
         for(range(ul_w)) |_, x| {
-            const pixel = getPixel(image, x + ul_x, y + ul_y, total_w);
+            const pixel = getPixel(image, x + ul_x, y + ul_y, @intCast(usize, size[w4.x]));
             try bit_stream_be.writeBits(pixel, 2);
         }
     }
 
-    const compressed = try compress2bpp(alloc, al.items);
+    const compressed = try compress2bpp(alloc, al.items, subsize);
+    verifyCompression(alloc, al.items, compressed, subsize) catch @panic("bad code");
 
     // std.log.info("- chunk {},{}: {:.2} ({d:0.2}%) → {:.2} ({d:0.2}%)", .{
     //     ul_x, ul_y,
@@ -257,11 +362,16 @@ pub fn main() !void {
     // wasm is little-endian, we can reinterpret the bytes as a [10 * 10 + 1]u32 directly.
     // data_u8[101..][data_indices[0]..data_indices[1]]
 
+    const total_size = w4.Vec2{
+        @intCast(i32, w),
+        @intCast(i32, h),
+    };
+
     if(sb10x10_160x160) {
         var items = std.ArrayList([]const u8).init(alloc);
         for(range(10)) |_, y_block| {
             for(range(10)) |_, x_block| {
-                try items.append(try processSubimage(alloc, image_data, x_block * 160, y_block * 160, 160, 160, w));
+                try items.append(try processSubimage(alloc, image_data, x_block * 160, y_block * 160, 160, 160, total_size));
             }
         }
         var index: u32 = 0;
@@ -276,7 +386,7 @@ pub fn main() !void {
             try final.appendSlice(item);
         }
     }else{
-        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, w));
+        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, total_size));
     }
 
     try std.fs.cwd().writeFile(dest_file.?, final.items);
