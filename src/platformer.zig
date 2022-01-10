@@ -35,26 +35,23 @@ var arena: ?std.mem.Allocator = null;
 const DecompressionDataRuntime = struct {
     size: w4.Vec2,
     data_out: []u8,
-    compressed_in: []const u8,
 };
 
-fn decompressionData(compressed_data_0: []const u8, size_0: w4.Vec2) type {
+fn decompressionData(size_0: w4.Vec2) type {
     return struct {
-        pub const compressed_data = compressed_data_0;
         pub const size = size_0;
         data: [std.math.divCeil(comptime_int, size[0] * size[1] * 2, 8) catch unreachable]u8 = undefined,
         fn runtime(self: *@This()) DecompressionDataRuntime {
             return .{
                 .data_out = &self.data,
-                .compressed_in = compressed_data,
                 .size = size,
             };
         }
     };
 }
 
-fn decompress(dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
-    var fbs_in = std.io.fixedBufferStream(dcd.compressed_in);
+fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
+    var fbs_in = std.io.fixedBufferStream(compressed_in);
     var reader = std.io.bitReader(.Little, fbs_in.reader());
 
     var fbs_out = std.io.fixedBufferStream(dcd.data_out);
@@ -85,7 +82,16 @@ fn decompress(dcd: DecompressionDataRuntime) !w4.Tex(.mut) {
     return w4.Tex(.mut).wrapSlice(dcd.data_out, dcd.size);
 }
 
-var wasm4platformerlevel1: decompressionData(@embedFile("wasm4platformerlevel1.w4i"), w4.Vec2{160, 160}) = .{};
+const levels_raw = @embedFile("platformer.w4i");
+const levels_indices_u8 = levels_raw[0..101 * @sizeOf(u32)];
+const levels_data = levels_raw[101 * @sizeOf(u32)..];
+
+fn getLevelIndex(i: usize) usize {
+    const value = levels_indices_u8[i * @sizeOf(u32)..][0..@sizeOf(u32)];
+    return std.mem.bytesToValue(u32, value);
+}
+
+var wasm4platformerlevel1: decompressionData(w4.Vec2{160, 160}) = .{};
 var decompressed_image: ?w4.Tex(.mut) = null;
 
 export fn start() void {}
@@ -99,7 +105,10 @@ export fn update() void {
     defer saveState(state);
 
     if(decompressed_image == null) {
-        decompressed_image = decompress(wasm4platformerlevel1.runtime()) catch unreachable;
+        decompressed_image = decompress(
+            levels_data[getLevelIndex(0)..getLevelIndex(1)],
+            wasm4platformerlevel1.runtime(),
+        ) catch unreachable;
     }
 
     state.frame += 1;

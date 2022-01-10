@@ -1,11 +1,23 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
+    const imgconv = b.addExecutable("imgconv", "src/imgconv.zig");
+    imgconv.addCSourceFile("src/stb_image.c", &.{}); // src/stb_image.h -DSTB_IMAGE_IMPLEMENTATION
+    imgconv.addIncludeDir("src/");
+    imgconv.linkLibC();
+    const imgconv_artifact = b.addInstallArtifact(imgconv);
+
+    const platformer_image = b.addSystemCommand(&.{
+        "zig-out/bin/imgconv", "src/platformer.png", "src/platformer.w4i", "--splitby=10x10-160x160",
+    });
+    platformer_image.step.dependOn(&imgconv_artifact.step);
+
     const mode = b.standardReleaseOptions();
 
     const lib = b.addSharedLibrary("cart", "src/platformer.zig", .unversioned);
     lib.setBuildMode(mode);
     lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+    lib.step.dependOn(&platformer_image.step);
     lib.import_memory = true;
     lib.initial_memory = 65536;
     lib.max_memory = 65536;
@@ -13,6 +25,7 @@ pub fn build(b: *std.build.Builder) void {
     lib.stack_size = 8192;
     lib.export_symbol_names = &[_][]const u8{ "start", "update" };
     lib.install();
+
 
     const lib_artifact = b.addInstallArtifact(lib);
 

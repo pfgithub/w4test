@@ -121,9 +121,9 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
     // if the values are all the same:
     // - keep reading values until the next different value or 
 
-    std.log.info("Compression info:", .{});
-    std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u9)});
-    std.log.info("- raw nodes: {}/{}", .{raw_count, total_count});
+    // std.log.info("Compression info:", .{});
+    // std.log.info("- longest sequence of literal nodes: {}/{}", .{highest_total, std.math.maxInt(u9)});
+    // std.log.info("- raw nodes: {}/{}", .{raw_count, total_count});
 
     // note: we don't care about the ending because the reader knows how many
     // bytes it's expecting.
@@ -142,6 +142,56 @@ const c = @cImport({
 });
 const std = @import("std");
 
+fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
+    const pixel = image[(y * w + x) * 3..][0..2];
+    return switch(pixel[0]) {
+        255 => @as(u2, 0b11),
+        173 => 0b10,
+        82 => 0b01,
+        0 => 0b00,
+        else => {
+            std.log.err("Unknown color {any}", .{pixel});
+            std.process.exit(1);
+        },
+    };
+}
+
+pub fn range(len: usize) []const void {
+    return @as([*]const void, &[_]void{})[0..len];
+}
+
+pub fn processSubimage(
+    alloc: std.mem.Allocator,
+    image: []const u8,
+    ul_x: usize, ul_y: usize,
+    ul_w: usize, ul_h: usize,
+    total_w: usize,
+) ![]const u8 {
+    var al = std.ArrayList(u8).init(alloc);
+    var bit_stream_be = std.io.bitWriter(.Little, al.writer());
+
+    for(range(ul_h)) |_, y| {
+        for(range(ul_w)) |_, x| {
+            const pixel = getPixel(image, x + ul_x, y + ul_y, total_w);
+            try bit_stream_be.writeBits(pixel, 2);
+        }
+    }
+
+    const compressed = try compress2bpp(alloc, al.items);
+
+    // std.log.info("- chunk {},{}: {:.2} ({d:0.2}%) → {:.2} ({d:0.2}%)", .{
+    //     ul_x, ul_y,
+
+    //     std.fmt.fmtIntSizeBin(al.items.len),
+    //     @intToFloat(f64, al.items.len) / (64.0 * 1024.0) * 100,
+
+    //     std.fmt.fmtIntSizeBin(compressed.len),
+    //     @intToFloat(f64, compressed.len) / (64.0 * 1024.0) * 100,
+    // });
+
+    return compressed;
+}
+
 pub fn main() !void {
     var arena_allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena_allocator.deinit();
@@ -150,63 +200,81 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(alloc);
     std.log.info("args: {s}", .{args});
 
-    if(args.len != 3) {
-        std.log.err("expected two args", .{});
-        std.process.exit(1);
+    var src_file: ?[:0]const u8 = null;
+    var dest_file: ?[:0]const u8 = null;
+    var sb10x10_160x160 = false;
+
+    for(args[1..]) |arg| {
+        if(std.mem.startsWith(u8, arg, "-")) {
+            if(std.mem.eql(u8, arg, "--splitby=10x10-160x160")) {
+                sb10x10_160x160 = true;
+            }else{
+                std.log.err("unknown arg", .{});
+                std.process.exit(0);
+            }
+            continue;
+        }
+        if(src_file == null) {
+            src_file = arg;
+        }else if(dest_file == null) {
+            dest_file = arg;
+        }else{
+            std.log.err("no positional arg needed", .{});
+            std.process.exit(0);
+        }
     }
 
-    var w: c_int = 0;
-    var h: c_int = 0;
-    var ch: c_int = 0;
-    const image_data = c.stbi_load(args[1], &w, &h, &ch, 3) orelse {
+    var w_cint: c_int = 0;
+    var h_cint: c_int = 0;
+    var ch_orig: c_int = 0;
+    const image_data_raw = c.stbi_load(src_file.?, &w_cint, &h_cint, &ch_orig, 3) orelse {
         std.log.err("failed to load image", .{});
         std.process.exit(1);
     };
+    const w = @intCast(usize, w_cint);
+    const h = @intCast(usize, h_cint);
+    const image_data = image_data_raw[0..(w * h * 3)];
 
-    _ = image_data;
     std.log.info("loaded image: {d}x{d}: {d}ch raw, {} ({:.2})", .{
         w, h,
-        ch,
+        ch_orig,
         w * h * 3,
         std.fmt.fmtIntSizeBin(@intCast(usize, w * h * 3)),
     });
 
-    var fbs = std.io.fixedBufferStream(image_data[0..(3 * @intCast(usize, w) * @intCast(usize, h))]);
-    var reader = fbs.reader();
+    var final = std.ArrayList(u8).init(alloc);
+    var final_bit_writer = std.io.bitWriter(.Little, final.writer());
+    // wasm is little-endian, we can reinterpret the bytes as a [10 * 10 + 1]u32 directly.
+    // data_u8[101..][data_indices[0]..data_indices[1]]
 
-    var al = std.ArrayList(u8).init(alloc);
-    var bit_stream_be = std.io.bitWriter(.Little, al.writer());
-
-    while(true) {
-        const bytes = reader.readBytesNoEof(3) catch |e| switch(e) {
-            error.EndOfStream => break,
-        };
-        
-        const value = switch(bytes[0]) {
-            255 => @as(u2, 0b11),
-            173 => 0b10,
-            82 => 0b01,
-            0 => 0b00,
-            else => {
-                std.log.err("Unknown color {any}", .{bytes});
-                std.process.exit(1);
+    if(sb10x10_160x160) {
+        var items = std.ArrayList([]const u8).init(alloc);
+        for(range(10)) |_, y_block| {
+            for(range(10)) |_, x_block| {
+                try items.append(try processSubimage(alloc, image_data, x_block * 160, y_block * 160, 160, 160, w));
             }
-        };
-
-        try bit_stream_be.writeBits(value, 2);
+        }
+        var index: u32 = 0;
+        for(items.items) |item| {
+            try final_bit_writer.writeBits(index, 32);
+            // std.log.info("- emit index: {}", .{index});
+            index += @intCast(u32, item.len);
+        }
+        try final_bit_writer.writeBits(index, 32);
+        // std.log.info("- emit index: {}", .{index});
+        for(items.items) |item| {
+            try final.appendSlice(item);
+        }
+    }else{
+        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, w));
     }
 
-    const compressed = try compress2bpp(alloc, al.items);
+    try std.fs.cwd().writeFile(dest_file.?, final.items);
 
-    try std.fs.cwd().writeFile(args[2], compressed);
+    std.log.info("emitted final: {:.2} ({d:0.2}%)", .{
+        std.fmt.fmtIntSizeBin(final.items.len),
+        @intToFloat(f64, final.items.len) / (64.0 * 1024.0) * 100,
+    });
 
-    std.log.info("uncompressed: {:.2} ({d:0.2}%)", .{
-        std.fmt.fmtIntSizeBin(al.items.len),
-        @intToFloat(f64, al.items.len) / (64.0 * 1024.0) * 100,
-    });
-    std.log.info("emitted compressed: {:.2} ({d:0.2}%)", .{
-        std.fmt.fmtIntSizeBin(compressed.len),
-        @intToFloat(f64, compressed.len) / (64.0 * 1024.0) * 100,
-    });
     // wasm4 uses 64 * 1024 bytes as the maximum.
 }
