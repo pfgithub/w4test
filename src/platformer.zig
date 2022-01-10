@@ -63,6 +63,8 @@ fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
     var fbs_out = std.io.fixedBufferStream(dcd.data_out);
     var writer = std.io.bitWriter(.Little, fbs_out.writer());
 
+    var written_count: usize = 0;
+
     const tag = try reader.readBitsNoEof(u8, 8);
     if(tag != 0b10001000) return error.BadInput;
 
@@ -71,18 +73,27 @@ fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
         switch(mode) {
             0 => {
                 const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
-                const len = reader.readBitsNoEof(u9, 9) catch break :whlp;
+                const len_len = reader.readBitsNoEof(u1, 1) catch break :whlp;
+                const len = reader.readBitsNoEof(u14, switch(len_len) {
+                    0 => @as(u8, 9),
+                    1 => 14,
+                }) catch break :whlp;
                 for(w4.range(len)) |_| {
                     writer.writeBits(value, 2) catch break :whlp;
+                    written_count += 1;
                 }
             },
             1 => {
                 writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
                 writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
                 writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                written_count += 1;
             },
         }
     }
+    if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
 }
 
 const levels_raw = @embedFile("platformer.w4i");

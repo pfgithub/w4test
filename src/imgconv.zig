@@ -79,7 +79,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
 
     var remains: ?u2 = null;
 
-    var highest_total: u9 = 0;
+    var highest_total: u14 = 0;
     var raw_count: usize = 0;
     var total_count: usize = 0;
 
@@ -91,9 +91,11 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
         const value1: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         const value2: u2 = reader.readBitsNoEof(u2, 2) catch value0;
         if(value0 == value1 and value1 == value2) {
-            var total: u9 = 3;
+            var total: u14 = 3;
+            // 11111111111111
+            // u14
             while(true) {
-                if(total == std.math.maxInt(u9)) break;
+                if(total == std.math.maxInt(u14)) break;
                 const next = reader.readBitsNoEof(u2, 2) catch break;
                 if(next != value0) {
                     remains = next;
@@ -105,7 +107,13 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
             // if it's a u5 or a u20 or something.
             try writer.writeBits(@as(u1, 0b0), 1);
             try writer.writeBits(value0, 2);
-            try writer.writeBits(total, 9);
+            if(total <= std.math.maxInt(u9)) {
+                try writer.writeBits(@as(u1, 0), 1);
+                try writer.writeBits(@intCast(u9, total), 9);
+            }else{
+                try writer.writeBits(@as(u1, 1), 1);
+                try writer.writeBits(total, 14);
+            }
             if(total > highest_total) highest_total = total;
         }else{
             try writer.writeBits(@as(u1, 0b1), 1); // actually i have decided i don't care
