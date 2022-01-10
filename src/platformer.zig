@@ -91,24 +91,57 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-var wasm4platformerlevel1: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_ul_data: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_ur_data: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_bl_data: decompressionData(w4.Vec2{160, 160}) = .{};
+var level_br_data: decompressionData(w4.Vec2{160, 160}) = .{};
+
+var level_ul: w4.Tex(.mut) = undefined;
+var level_ur: w4.Tex(.mut) = undefined;
+var level_bl: w4.Tex(.mut) = undefined;
+var level_br: w4.Tex(.mut) = undefined;
+
 var decompressed_image: ?w4.Tex(.mut) = null;
 
-export fn start() void {}
+export fn start() void {
+    // load all four levels (undefined is not good to have lying around)
+
+    // then, just reload levels when the person gets near an edge
+
+    level_ul = decompress(
+        levels_data[getLevelIndex(0)..getLevelIndex(1)],
+        level_ul_data.runtime(),
+    ) catch unreachable;
+    level_ur = decompress(
+        levels_data[getLevelIndex(1)..getLevelIndex(2)],
+        level_ur_data.runtime(),
+    ) catch unreachable;
+    level_bl = decompress(
+        levels_data[getLevelIndex(10)..getLevelIndex(11)],
+        level_bl_data.runtime(),
+    ) catch unreachable;
+    level_br = decompress(
+        levels_data[getLevelIndex(11)..getLevelIndex(12)],
+        level_br_data.runtime(),
+    ) catch unreachable;
+}
+
+fn getWorldPixel(pos: w4.Vec2) u2 {
+    if(pos[w4.x] >= 160) {
+        return level_ur.get(pos + w4.Vec2{-160, 0});
+    }
+    return level_ul.get(pos);
+}
 
 export fn update() void {
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
     // arena = fba.allocator();
     // defer arena = null;
 
-    var state = getState();
-    defer saveState(state);
-
-    if(decompressed_image == null) {
-        decompressed_image = decompress(
-            levels_data[getLevelIndex(0)..getLevelIndex(1)],
-            wasm4platformerlevel1.runtime(),
-        ) catch unreachable;
+    state = getState();
+    defer {
+        saveState(state);
+        state = undefined;
     }
 
     state.frame += 1;
@@ -169,17 +202,33 @@ export fn update() void {
     // w4.PALETTE.* = color_themes[4];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(w4.Vec2{0, 0}, decompressed_image.?.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
-    w4.ctx.blit(
-        -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{80, 80},
-        decompressed_image.?.cons(),
-        .{0, 0}, .{160, 160}, .{0, 1, 2, 2}, .{2, 2},
-    );
+    w4.ctx.blit(w4.Vec2{0, 0}, level_ul.cons(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
 
-    const player_color: u3 = if(state.player.dash_used) 3 else 1;
+    // w4.ctx.shader(|x, y| {})
+    for(w4.range(160)) |_, y_usz| {
+        const y = @intToFloat(f32, y_usz);
+        for(w4.range(160)) |_, x_usz| {
+            const x = @intToFloat(f32, x_usz);
+
+            // -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{80, 80}
+
+            var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
+            var pos_world = Vec2f{x / 2, y / 2} - (state.player.pos * Vec2f{-1, 1}) - Vec2f{40, 40};
+            // var pos_world = (-state.player.pos * Vec2f{2, -2}) + Vec2f{250, -250} + Vec2f{x / 2, y / 2};
+            var pos_world_int = w4.Vec2{
+                @floatToInt(i32, @floor(pos_world[w4.x])),
+                @floatToInt(i32, @floor(pos_world[w4.y])),
+            };
+            var pixel = getWorldPixel(pos_world_int);
+
+            w4.ctx.set(pos_screen, pixel);
+        }
+    }
+
+    const player_color: u3 = if(state.player.dash_used) 2 else 1;
     w4.ctx.blit(
         w4.Vec2{80, 80},
-        decompressed_image.?.cons(),
+        level_ul.cons(),
         .{0, 0},
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
         .{
@@ -308,6 +357,8 @@ const Vec2f = std.meta.Vector(2, f32);
 
 const Player = struct {
     pos: Vec2f = Vec2f{100, -100},
+    // safe as long as positions remain -16,777,217...16,777,217
+    // given that our world is 1,600x1,600 that seems okay.
     vel_gravity: Vec2f = Vec2f{0, 0},
     vel_instant: Vec2f = Vec2f{0, 0},
     vel_dash: Vec2f = Vec2f{0, 0},
@@ -392,28 +443,28 @@ const Player = struct {
     pub fn colliding(player: *Player) bool {
         const pos = player.posInt(.{1, 1});
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
-            const value = decompressed_image.?.get(pos + w4.Vec2{
+            const value = getWorldPixel(pos + w4.Vec2{
                 @intCast(i32, x),
                 0,
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
-            const value = decompressed_image.?.get(pos + w4.Vec2{
+            const value = getWorldPixel(pos + w4.Vec2{
                 @intCast(i32, x),
                 player.size[w4.y] - 1,
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
-            const value = decompressed_image.?.get(pos + w4.Vec2{
+            const value = getWorldPixel(pos + w4.Vec2{
                 0,
                 @intCast(i32, y + 1),
             });
             if(value == 0b00) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
-            const value = decompressed_image.?.get(pos + w4.Vec2{
+            const value = getWorldPixel(pos + w4.Vec2{
                 player.size[w4.x] - 1,
                 @intCast(i32, y + 1),
             });
@@ -422,6 +473,8 @@ const Player = struct {
         return false;
     }
 };
+
+var state: State = undefined;
 
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
