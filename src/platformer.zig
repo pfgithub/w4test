@@ -51,7 +51,7 @@ fn decompressionData(size_0: w4.Vec2) type {
             return w4.Tex(.cons).wrapSlice(&dcd.data, size);
         }
         pub fn texMut(dcd: *@This()) w4.Tex(.cons) {
-            return w4.Tex(.cons).wrapSliceMut(&dcd.data, size);
+            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
         }
     };
 }
@@ -94,48 +94,116 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-var level_0: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_1: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_2: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_3: decompressionData(w4.Vec2{160, 160}) = .{};
-var level_phase: u2 = 0; // the phase defines which level is the center
+const LevelTex = decompressionData(w4.Vec2{160, 160});
+var levels: [4]LevelTex = .{
+    .{},
+    .{},
+    .{},
+    .{},
+};
+var level_ul: *LevelTex = undefined;
+var level_ur: *LevelTex = undefined;
+var level_bl: *LevelTex = undefined;
+var level_br: *LevelTex = undefined;
+var level_ul_x: i32 = undefined;
+var level_ul_y: i32 = undefined;
 
 var decompressed_image: ?w4.Tex(.mut) = null;
+
+fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
+    if(x < 0 or x >= 10) unreachable;
+    if(y < 0 or y >= 10) unreachable;
+
+    const index = @intCast(usize, y * 10 + x);
+
+    decompress(
+        levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
+        ptr.runtime(),
+    ) catch unreachable;
+}
 
 export fn start() void {
     // load all four levels (undefined is not good to have lying around)
 
     // then, just reload levels when the person gets near an edge
 
-    decompress(
-        levels_data[getLevelIndex(0)..getLevelIndex(1)],
-        level_0.runtime(),
-    ) catch unreachable;
-    decompress(
-        levels_data[getLevelIndex(1)..getLevelIndex(2)],
-        level_1.runtime(),
-    ) catch unreachable;
-    decompress(
-        levels_data[getLevelIndex(10)..getLevelIndex(11)],
-        level_2.runtime(),
-    ) catch unreachable;
-    decompress(
-        levels_data[getLevelIndex(11)..getLevelIndex(12)],
-        level_3.runtime(),
-    ) catch unreachable;
+    replaceLevel(&levels[0], 0, 0);
+    replaceLevel(&levels[1], 1, 0);
+    replaceLevel(&levels[2], 0, 1);
+    replaceLevel(&levels[3], 1, 1);
+
+    level_ul = &levels[0];
+    level_ur = &levels[1];
+    level_bl = &levels[2];
+    level_br = &levels[3];
+    level_ul_x = 0;
+    level_ul_y = 0;
+}
+
+fn ulLevelFloat() Vec2f {
+    return Vec2f{
+        @intToFloat(f32, level_ul_x) * 160,
+        @intToFloat(f32, level_ul_y) * 160,
+    };
+}
+
+fn reloadLevels() void {
+    replaceLevel(level_ul, level_ul_x, level_ul_y);
+    replaceLevel(level_ur, level_ul_x + 1, level_ul_y);
+    replaceLevel(level_bl, level_ul_x, level_ul_y + 1);
+    replaceLevel(level_br, level_ul_x + 1, level_ul_y + 1);
+
+    // we can be smart and only reload the parts that are needed if we want
+}
+
+fn updateLoaded() void {
+    // based on the current phase, load levels.
+    const player_pos_idx = state.player.pos * Vec2f{1, -1};
+
+    // should be able to do this as a for loop somehow
+    // actually I guess the easiest way is to just reload all four corners when
+    // we hit an edge
+    // and we can use programming to decide which not to reload
+    // that would be smart I think
+
+    var changed = false;
+
+    while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + 160 + 106 and level_ul_x < 8) {
+        level_ul_x += 1;
+        changed = true;
+    }
+    while(player_pos_idx[w4.x] < ulLevelFloat()[w4.x] + 54 and level_ul_x > 0) {
+        level_ul_x -= 1;
+        changed = true;
+    }
+    while(player_pos_idx[w4.y] > ulLevelFloat()[w4.y] + 160 + 106 and level_ul_y < 8) {
+        level_ul_y += 1;
+        changed = true;
+    }
+    while(player_pos_idx[w4.y] < ulLevelFloat()[w4.y] + 54 and level_ul_y > 0) {
+        level_ul_y -= 1;
+        changed = true;
+    }
+
+    if(changed) {
+        reloadLevels();
+    }
 }
 
 fn getWorldPixel(pos: w4.Vec2) u2 {
-    if(pos[w4.x] >= 160 and pos[w4.y] >= 160) {
-        return level_3.tex().get(pos + w4.Vec2{-160, -160});
+    const ul_pos = w4.Vec2{level_ul_x * 160, level_ul_y * 160};
+    const center_pos = ul_pos + w4.Vec2{160, 160};
+
+    if(pos[w4.x] >= center_pos[w4.x] and pos[w4.y] >= center_pos[w4.y]) {
+        return level_br.tex().get(pos - w4.Vec2{center_pos[w4.x], center_pos[w4.y]});
     }
-    if(pos[w4.x] >= 160) {
-        return level_1.tex().get(pos + w4.Vec2{-160, 0});
+    if(pos[w4.x] >= center_pos[w4.x]) {
+        return level_ur.tex().get(pos - w4.Vec2{center_pos[w4.x], ul_pos[w4.y]});
     }
-    if(pos[w4.y] >= 160) {
-        return level_2.tex().get(pos + w4.Vec2{0, -160});
+    if(pos[w4.y] >= center_pos[w4.y]) {
+        return level_bl.tex().get(pos - w4.Vec2{ul_pos[w4.x], center_pos[w4.y]});
     }
-    return level_0.tex().get(pos);
+    return level_ul.tex().get(pos - w4.Vec2{ul_pos[w4.x], ul_pos[w4.y]});
 }
 
 export fn update() void {
@@ -148,21 +216,32 @@ export fn update() void {
         saveState(state);
         state = undefined;
     }
-
     state.frame += 1;
 
+    updateLoaded();
+
+    var scale = Vec2f{2, 2};
+    var flying = false;
     if(dev_mode) {
+        if(w4.GAMEPAD2.button_1) {
+            scale = Vec2f{0.5, 0.5};
+            flying = true;
+        }
         if(w4.GAMEPAD2.button_left) {
-            state.player.pos[w4.x] -= 1;
+            state.player.pos[w4.x] -= 2 / scale[w4.x];
+            flying = true;
         }
         if(w4.GAMEPAD2.button_right) {
-            state.player.pos[w4.x] += 1;
+            state.player.pos[w4.x] += 2 / scale[w4.x];
+            flying = true;
         }
         if(w4.GAMEPAD2.button_up) {
-            state.player.pos[w4.y] += 1;
+            state.player.pos[w4.y] += 2 / scale[w4.y];
+            flying = true;
         }
         if(w4.GAMEPAD2.button_down) {
-            state.player.pos[w4.y] -= 1;
+            state.player.pos[w4.y] -= 2 / scale[w4.y];
+            flying = true;
         }
     }
 
@@ -199,15 +278,15 @@ export fn update() void {
         state.player.jump_used = true;
     }
     if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
-    state.player.update();
+    if(!flying) state.player.update();
 
-    const bg_time = @maximum(@minimum(state.player.pos[w4.x] / 160.0, 1), 0);
+    const bg_time = @maximum(@mod(state.player.pos[w4.x] / 160.0, 1), 0);
     w4.PALETTE.* = themeMix(color_themes[3], color_themes[4], bg_time);
 
     // w4.PALETTE.* = color_themes[4];
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(w4.Vec2{0, 0}, level_0.tex(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
+    w4.ctx.blit(w4.Vec2{0, 0}, levels[0].tex(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
 
     // w4.ctx.shader(|x, y| {})
     for(w4.range(160)) |_, y_usz| {
@@ -218,8 +297,7 @@ export fn update() void {
             // -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{80, 80}
 
             var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
-            var pos_world = Vec2f{x / 2, y / 2} - (state.player.pos * Vec2f{-1, 1}) - Vec2f{40, 40};
-            // var pos_world = (-state.player.pos * Vec2f{2, -2}) + Vec2f{250, -250} + Vec2f{x / 2, y / 2};
+            var pos_world = Vec2f{x, y} / scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / scale;
             var pos_world_int = w4.Vec2{
                 @floatToInt(i32, @floor(pos_world[w4.x])),
                 @floatToInt(i32, @floor(pos_world[w4.y])),
@@ -233,7 +311,7 @@ export fn update() void {
     const player_color: u3 = if(state.player.dash_used) 2 else 1;
     w4.ctx.blit(
         w4.Vec2{80, 80},
-        level_0.tex(),
+        levels[0].tex(),
         .{0, 0},
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
         .{
@@ -484,7 +562,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},

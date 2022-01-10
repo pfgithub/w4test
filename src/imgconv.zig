@@ -101,6 +101,8 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8) ![]const u8 {
                 }
                 total += 1;
             }
+            // ok we could actually scale this. like use a bit to specify
+            // if it's a u5 or a u20 or something.
             try writer.writeBits(@as(u1, 0b0), 1);
             try writer.writeBits(value0, 2);
             try writer.writeBits(total, 9);
