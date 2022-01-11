@@ -180,6 +180,9 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     if(state.door_0_unlocked and res == 0b00 and pointWithin(pos, .{143, 56}, .{148, 103})) {
         return 0b11;
     }
+    if(state.door_1_unlocked and res == 0b00 and pointWithin(pos, .{420, 361}, .{427, 383})) {
+        return 0b10;
+    }
 
     return res;
 }
@@ -197,6 +200,9 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
 
     if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
         return 0b11;
+    }
+    if(state.door_1_unlocked and pointWithin(pos, .{437, 383}, .{441, 383})) {
+        return 0b10;
     }
     
     if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) blk: {
@@ -290,7 +296,7 @@ fn updateWorld() void {
         const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], mix);
     }
-
+ 
     if(playerTouching(.{39, 84}, .{45, 91})) {
         w4.PALETTE.* = themeMix(
             w4.PALETTE.*,
@@ -319,23 +325,15 @@ fn updateWorld() void {
         incrFrameTimer();
     }
 
-    if(playerTouching(.{124, 100}, .{130, 100}) and !state.door_0_unlocked) {
-        if(use_key_this_frame) {
-            if(state.clicks >= 10) {
-                state.clicks -= 10;
-                state.door_0_unlocked = true;
-                flashColor(w4.PALETTE.*, 5);
-                // playSound([_]Tone{});
-                // w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50}); // happy sounding
-                w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
-                state.player.disallow_noise = 90;
-            }else{
-                // play failure sound
-                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
-            }
-        }
-
-        showNote("Unlock door: 10¢", "Press ↓ to activate.");
+    if(playerTouching(.{124, 100}, .{130, 100})) {
+        autoDoor(&state.door_0_unlocked,
+            10, "Unlock door: 10¢", "Press ↓ to purchase.",
+        );
+    }
+    if(playerTouching(.{437, 383}, .{441, 383})) {
+        autoDoor(&state.door_1_unlocked,
+            200, "Unlock door: 200¢", "Press ↓ to purchase.",
+        );
     }
 
     if(playerTouching(.{421, 201}, .{426, 201})) {
@@ -364,6 +362,27 @@ fn updateWorld() void {
     //     state.door_0_unlocked = true;
     //     state.clicks -= 10;
     // }
+}
+
+fn autoDoor(purchased: *bool, price: f32, msg1: []const u8, msg2: []const u8) void {
+    if(!purchased.*) {
+        if(use_key_this_frame) {
+            if(state.clicks >= price) {
+                state.clicks -= price;
+                purchased.* = true;
+                flashColor(w4.PALETTE.*, 5);
+                // playSound([_]Tone{});
+                // w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50}); // happy sounding
+                w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
+                state.player.disallow_noise = 90;
+            }else{
+                // play failure sound
+                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+            }
+        }
+
+        showNote(msg1, msg2);
+    }
 }
 
 fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, msg2: []const u8, label: []const u8) void {
@@ -975,6 +994,7 @@ const State = struct {
 
     dash_unlocked: bool = false,
     door_0_unlocked: bool = false,
+    door_1_unlocked: bool = false,
 
     farm_0_purchased: bool = false,
     farm_0_coins: f32 = 0,
