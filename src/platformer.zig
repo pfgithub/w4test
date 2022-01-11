@@ -152,7 +152,7 @@ fn updateLoaded() void {
     }
 }
 
-fn getWorldPixel(pos: w4.Vec2) u2 {
+fn getWorldPixelRaw(pos: w4.Vec2) u2 {
     const ul_pos = w4.Vec2{level_ul_x * chunk_size, level_ul_y * chunk_size};
     const center_pos = ul_pos + w4.Vec2{chunk_size, chunk_size};
 
@@ -167,6 +167,21 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     }
     return level_ul.tex().get(pos - w4.Vec2{ul_pos[w4.x], ul_pos[w4.y]});
 }
+fn getWorldPixel(pos: w4.Vec2) u2 {
+    const res = getWorldPixelRaw(pos);
+    if(state.door_0_unlocked
+    and res == 0b00
+    and @reduce(.And, pos >= w4.Vec2{143, 56})
+    and @reduce(.And, pos <= w4.Vec2{148, 103})) {
+        return 0b11;
+    }
+    if(state.door_0_unlocked
+    and @reduce(.And, pos >= w4.Vec2{124, 92})
+    and @reduce(.And, pos <= w4.Vec2{130, 100})) {
+        return 0b11;
+    }
+    return res;
+}
 
 fn playerTouching(ul: w4.Vec2, br: w4.Vec2) bool {
     const player_pos = state.player.posInt();
@@ -177,7 +192,16 @@ fn playerTouching(ul: w4.Vec2, br: w4.Vec2) bool {
     return true;
 }
 
+var reset_frame_timer = true;
+fn incrFrameTimer() void {
+    state.region_frame_timer +|= 1;
+    reset_frame_timer = false;
+}
 fn updateWorld() void {
+    reset_frame_timer = true;
+    defer if(reset_frame_timer) {
+        state.region_frame_timer = 0;
+    };
     // const player_pos = state.player.posInt();
     // 39,84…45,91
 
@@ -188,20 +212,59 @@ fn updateWorld() void {
         w4.PALETTE.* = themeMix(
             w4.PALETTE.*,
             color_themes[6],
-            1 - @minimum(@intToFloat(f32, state.gaining_point) / 10, 1),
+            1 - @minimum(@intToFloat(f32, state.region_frame_timer) / 16, 1),
         );
-        if(state.gaining_point == 0) {
-            // playEffect(flashColor(color_themes[6], 10))
+        if(state.region_frame_timer == 0) {
+            // playEffect(flashColor(color_themes[6], 16))
             // playEffect(circles);
             state.clicks += 1;
+            // playSound();
+
+            // if we want to be fancy we could even make a little tune of frequencies
+            // and have it play them in order
+            // playTune(&[_]Note{ … })
+            w4.tone(.{.start = 900}, .{.release = 16}, 100, .{.channel = .triangle});
         }
-        state.gaining_point +|= 1;
-    }else{
-        state.gaining_point = 0;
+        incrFrameTimer();
     }
+
+    if(playerTouching(.{124, 100}, .{130, 100}) and !state.door_0_unlocked) {
+        if(dash_down_this_frame) {
+            if(state.clicks >= 10) {
+                state.clicks -= 10;
+                state.door_0_unlocked = true;
+                flashColor(w4.PALETTE.*, 5);
+                // playSound([_]Tone{});
+                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+            }else{
+                // play failure sound
+                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+            }
+        }
+
+        showNote("Unlock door: 10¢", "Press x and ↓ to activate.");
+    }
+
+    // if(state.clicks > 10 and !state.door_0_unlocked) {
+    //     state.door_0_unlocked = true;
+    //     state.clicks -= 10;
+    // }
+}
+
+fn showNote(a: []const u8, b: []const u8) void {
+    _ = a;
+    _ = b;
+    // TODO
+}
+fn flashColor(color: [4]u32, duration: u8) void {
+    _ = color;
+    _ = duration;
+    // TODO
 }
 
 const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
+
+var dash_down_this_frame = false;
 
 export fn update() void {
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
@@ -214,6 +277,8 @@ export fn update() void {
         state = undefined;
     }
     state.frame += 1;
+
+    dash_down_this_frame = false;
 
     updateLoaded();
 
@@ -242,6 +307,12 @@ export fn update() void {
         }
     }
 
+    if(w4.GAMEPAD1.button_1 and w4.GAMEPAD1.button_down) {
+        state.player.dash_down_key_held = true;
+        dash_down_this_frame = true;
+    }else{
+        state.player.dash_down_key_held = false;
+    }
     if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_1) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
@@ -502,6 +573,7 @@ const Player = struct {
     on_ground: u8 = 0,
     dash_used: bool = false,
     jump_used: bool = false,
+    dash_down_key_held: bool = false,
 
     vel_instant_prev: Vec2f = Vec2f{0, 0},
 
@@ -615,7 +687,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
@@ -624,8 +696,10 @@ const State = struct {
 
     clicks: f32 = 0,
 
-    gaining_point: u8 = 0,
+    region_frame_timer: u8 = 0,
+
     dash_unlocked: bool = false,
+    door_0_unlocked: bool = false,
 };
 
 const color_themes = [_][4]u32{

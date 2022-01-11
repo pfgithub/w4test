@@ -266,7 +266,7 @@ pub const ToneFrequency = packed struct {
 };
 
 pub const ToneDuration = packed struct {
-    sustain: u8,
+    sustain: u8 = 0,
     release: u8 = 0,
     decay: u8 = 0,
     attack: u8 = 0,
