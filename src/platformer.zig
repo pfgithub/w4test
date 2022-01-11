@@ -325,7 +325,7 @@ export fn update() void {
     }else{
         state.player.down_key_held = false;
     }
-    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_1) {
+    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
             dir[w4.x] -= 1;
@@ -357,7 +357,7 @@ export fn update() void {
     if(w4.GAMEPAD1.button_right) {
         state.player.vel_instant += Vec2f{1, 0};
     }
-    if(!state.player.jump_used and (w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_2) and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
+    if(!state.player.jump_used and (w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_1) and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
         state.player.vel_gravity[w4.y] = 2.2;
         state.player.on_ground = std.math.maxInt(u8);
         state.player.jump_used = true;
