@@ -190,6 +190,20 @@ fn rand(seed: u64) u32 {
     var r = std.rand.Xoshiro256.init(seed);
     return r.random().int(u32);
 }
+
+fn inRain(pos: w4.Vec2) bool {
+    return pointWithin(pos, .{188, 0}, .{1557, 209});
+}
+fn protectedFromRain(pos: w4.Vec2) bool {
+    if(pos[w4.x] >= 411 and pos[w4.x] <= 441 and pos[w4.y] >= 186) {
+        return true;
+    }
+    if(pos[w4.x] >= 597 and pos[w4.x] <= 623 and pos[w4.y] >= 192) {
+        return true;
+    }
+    return false;
+}
+
 fn getScreenPixel(pos_float: Vec2f) u2 {
     var pos = w4.Vec2{
         @floatToInt(i32, @floor(pos_float[w4.x])),
@@ -205,15 +219,9 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         return 0b10;
     }
     
-    if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) blk: {
+    if(res >= 0b10 and inRain(pos) and !protectedFromRain(pos)) {
         // we'll want to play a rain sound when this is visible on screen probably
         // and we can change the player step sound
-        if(pos_float[w4.x] >= 411 and pos_float[w4.x] <= 441 and pos_float[w4.y] >= 186) {
-            break :blk;
-        }
-        if(pos_float[w4.x] >= 597 and pos_float[w4.x] <= 623 and pos_float[w4.y] >= 192) {
-            break :blk;
-        }
 
         // rain effect
         // const point_rel = pos - w4.Vec2{180, 0};
@@ -270,11 +278,16 @@ fn updateWorld() void {
     // - a rect in which the theme is a set value
     // - a transition rect
 
+    var rain_volume: u32 = 0;
+
+    const outdoors_mix = @maximum(@minimum((state.player.pos[w4.x] - 148.0) / 35.0, 1.0), 0.0);
     w4.PALETTE.* = themeMix(
         color_themes[3],
         color_themes[5],
-        @maximum(@minimum((state.player.pos[w4.x] - 148.0) / 35.0, 1.0), 0.0),
+        outdoors_mix,
     );
+    rain_volume = @floatToInt(u32, outdoors_mix * 100);
+
     if(playerTouching(.{411, 187}, .{441, 209})) {
         var flat = (state.player.pos[w4.x] - 411.0) / (441.0 - 411.0);
         flat *= 2.0;
@@ -284,13 +297,17 @@ fn updateWorld() void {
         flat *= 2;
         flat = @maximum(@minimum(flat, 1.0), 0.0);
 
+        rain_volume = @floatToInt(u32, (1 - flat) * 50 + 50);
+
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], flat);
     }
     if(playerTouching(.{597, 209}, .{623, 266})) {
         const mix = @maximum(@minimum((-state.player.pos[w4.y] - 209) / (266.0 - 209.0), 1.0), 0.0);
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[2], mix);
+        rain_volume = @floatToInt(u32, (1 - mix) * 100);
     }else if(-state.player.pos[w4.y] >= 209) {
         w4.PALETTE.* = color_themes[2];
+        rain_volume = 0;
     }
     if(playerTouching(.{839, 418}, .{878, 437})) {
         const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
@@ -356,6 +373,12 @@ fn updateWorld() void {
         if(state.farm_1_purchased) {
             state.farm_1_coins += 2;
         }
+    }
+
+    if(rain_volume > 10) {
+        const rain_pitch = @floatToInt(u16, (1 - (@intToFloat(f32, rain_volume) / 100)) * 20 + 150);// 150 to 170
+        w4.tone(.{.start = rain_pitch}, .{.sustain = 4}, rain_volume, .{.channel = .noise}); // rain
+        state.player.disallow_noise = 4;
     }
 
     // if(state.clicks > 10 and !state.door_0_unlocked) {
