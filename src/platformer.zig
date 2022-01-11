@@ -185,7 +185,7 @@ fn updateWorld() void {
         if(state.gaining_point == 0) {
             // playEffect(flashColor(color_themes[6], 10))
             // playEffect(circles);
-            w4.trace("entered!");
+            state.clicks += 1;
         }
         state.gaining_point +|= 1;
     }else{
@@ -274,8 +274,6 @@ export fn update() void {
 
     w4.DRAW_COLORS.* = 0x22;
 
-    w4.ctx.blit(w4.Vec2{0, 0}, levels[0].tex(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
-
     // w4.ctx.shader(|x, y| {})
     for(w4.range(160)) |_, y_usz| {
         const y = @intToFloat(f32, y_usz);
@@ -308,13 +306,23 @@ export fn update() void {
         }, .{1, 1},
     );
 
-    w4.ctx.blit(
-        w4.Vec2{0, 0},
-        ui_texture,
-        .{0, 0},
-        .{80, 80},
-        .{1, 2, 3, 4},
-        .{1, 1}
+    const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
+    const num_w = measureNumber(state.clicks);
+    w4.ctx.rect(
+        numbox_ur - w4.Vec2{num_w + 4, 0},
+        .{num_w + 4, 9},
+        0b00,
+    );
+    w4.ctx.rect(
+        numbox_ur - w4.Vec2{num_w + 3, -1},
+        .{num_w + 2, 7},
+        0b11,
+    );
+    drawNumber(
+        w4.ctx,
+        state.clicks,
+        numbox_ur + w4.Vec2{-2, 2},
+        0b00,
     );
 
     // for(w4.range(160)) |_, y| {
@@ -324,6 +332,48 @@ export fn update() void {
     //         }
     //     }
     // }
+}
+
+fn measureNumber(num_initial: f32) i32 {
+    var num = num_initial;
+    var iter = false;
+    var res: i32 = 0;
+    // to.
+    while(num > 0.999 or !iter) {
+        iter = true;
+        const digit = @floatToInt(i32, @mod(num, 10));
+        num = @divFloor(num, 10);
+
+        _ = digit;
+        res += 4;
+    }
+    return res - 1;
+}
+fn drawNumber(tex: w4.Tex(.mut), num_initial: f32, ur_initial: w4.Vec2, color: u2) void {
+    var num = num_initial;
+    var ur = ur_initial;
+    var iter = false;
+    // to.
+    while(num > 0.999 or !iter) {
+        iter = true;
+        const digit = @floatToInt(i32, @mod(num, 10));
+        num = @divFloor(num, 10);
+
+        const digit_pos = w4.Vec2{
+            digit * 3 + 0,
+            13,
+        };    
+        ur -= w4.Vec2{4, 0};
+
+        tex.blit(
+            ur + w4.Vec2{1, 0},
+            ui_texture,
+            digit_pos,
+            .{3, 5},
+            .{color, 4, 4, 4},
+            .{1, 1},
+        );
+    }
 }
 
 fn sign(x: anytype) @TypeOf(x) {
@@ -563,6 +613,8 @@ const State = struct {
     player: Player = .{},
     // if the player is on a moving platform, don't control this with player_vel.
     // we need like a player_environment_vel or something.
+
+    clicks: f32 = 0,
 
     gaining_point: u8 = 0,
     dash_unlocked: bool = false,
