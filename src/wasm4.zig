@@ -76,7 +76,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
     pub fn get(tex: Tex(mbl), pos: Vec2) u2 {
         if(@reduce(.Or, pos < w4.Vec2{0, 0})) return 0;
         if(@reduce(.Or, pos >= tex.size)) return 0;
-        const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+        const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
         const index = @intCast(usize, @divFloor(index_unscaled, 4));
         const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
         return @truncate(u2, tex.data[index] >> byte_idx);
@@ -84,7 +84,7 @@ pub fn Tex(comptime mbl: Mbl) type {return struct {
     pub fn set(tex: Tex(.mut), pos: Vec2, value: u2) void {
         if(@reduce(.Or, pos < w4.Vec2{0, 0})) return;
         if(@reduce(.Or, pos >= tex.size)) return;
-        const index_unscaled = pos[w4.x] + (pos[w4.y] * w4.CANVAS_SIZE);
+        const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
         const index = @intCast(usize, @divFloor(index_unscaled, 4));
         const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
         tex.data[index] &= ~(@as(u8, 0b11) << byte_idx);

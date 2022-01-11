@@ -129,7 +129,7 @@ pub fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !voi
 
     writer.flushBits() catch {};
 
-    std.log.debug("decompression read {d}/{d}", .{written_count, dcd.size[0] * dcd.size[1]});
+    // std.log.debug("decompression read {d}/{d}", .{written_count, dcd.size[0] * dcd.size[1]});
     if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
 }
 
@@ -216,7 +216,7 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
 
     try writer.flushBits();
 
-    std.log.debug("compression coded for {d}/{d}", .{written_count, size[0] * size[1]});
+    // std.log.debug("compression coded for {d}/{d}", .{written_count, size[0] * size[1]});
     if(written_count < size[0] * size[1]) unreachable;
 
     return al.toOwnedSlice();
@@ -323,12 +323,12 @@ pub fn main() !void {
 
     var src_file: ?[:0]const u8 = null;
     var dest_file: ?[:0]const u8 = null;
-    var sb10x10_160x160 = false;
+    var sb20x20_80x80 = false;
 
     for(args[1..]) |arg| {
         if(std.mem.startsWith(u8, arg, "-")) {
-            if(std.mem.eql(u8, arg, "--splitby=10x10-160x160")) {
-                sb10x10_160x160 = true;
+            if(std.mem.eql(u8, arg, "--splitby=20x20-80x80")) {
+                sb20x20_80x80 = true;
             }else{
                 std.log.err("unknown arg", .{});
                 std.process.exit(0);
@@ -373,11 +373,11 @@ pub fn main() !void {
         @intCast(i32, h),
     };
 
-    if(sb10x10_160x160) {
+    if(sb20x20_80x80) {
         var items = std.ArrayList([]const u8).init(alloc);
-        for(range(10)) |_, y_block| {
-            for(range(10)) |_, x_block| {
-                try items.append(try processSubimage(alloc, image_data, x_block * 160, y_block * 160, 160, 160, total_size));
+        for(range(20)) |_, y_block| {
+            for(range(20)) |_, x_block| {
+                try items.append(try processSubimage(alloc, image_data, x_block * 80, y_block * 80, 80, 80, total_size));
             }
         }
         var index: u32 = 0;

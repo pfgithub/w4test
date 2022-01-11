@@ -33,16 +33,19 @@ const dev_mode = true;
 
 var arena: ?std.mem.Allocator = null;
 
+const chunk_size = 80;
+const chunk_count = 20;
 const levels_raw = @embedFile("platformer.w4i");
-const levels_indices_u8 = levels_raw[0..101 * @sizeOf(u32)];
-const levels_data = levels_raw[101 * @sizeOf(u32)..];
+const levels_indices_count = chunk_count * chunk_count + 1;
+const levels_indices_u8 = levels_raw[0..levels_indices_count * @sizeOf(u32)];
+const levels_data = levels_raw[levels_indices_count * @sizeOf(u32)..];
 
 fn getLevelIndex(i: usize) usize {
     const value = levels_indices_u8[i * @sizeOf(u32)..][0..@sizeOf(u32)];
     return std.mem.bytesToValue(u32, value);
 }
 
-const LevelTex = img.decompressionData(w4.Vec2{160, 160});
+const LevelTex = img.decompressionData(w4.Vec2{80, 80});
 var levels: [4]LevelTex = .{
     .{},
     .{},
@@ -61,10 +64,10 @@ var level_ul_y: i32 = undefined;
 var decompressed_image: ?w4.Tex(.mut) = null;
 
 fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
-    if(x < 0 or x >= 10) unreachable;
-    if(y < 0 or y >= 10) unreachable;
+    if(x < 0 or x >= chunk_count) unreachable;
+    if(y < 0 or y >= chunk_count) unreachable;
 
-    const index = @intCast(usize, y * 10 + x);
+    const index = @intCast(usize, y * chunk_count + x);
 
     img.decompress(
         levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
@@ -92,8 +95,8 @@ export fn start() void {
 
 fn ulLevelFloat() Vec2f {
     return Vec2f{
-        @intToFloat(f32, level_ul_x) * 160,
-        @intToFloat(f32, level_ul_y) * 160,
+        @intToFloat(f32, level_ul_x) * chunk_size,
+        @intToFloat(f32, level_ul_y) * chunk_size,
     };
 }
 
@@ -102,6 +105,7 @@ fn reloadLevels() void {
     replaceLevel(level_ur, level_ul_x + 1, level_ul_y);
     replaceLevel(level_bl, level_ul_x, level_ul_y + 1);
     replaceLevel(level_br, level_ul_x + 1, level_ul_y + 1);
+    // w4.trace("reloading…");
 
     // we can be smart and only reload the parts that are needed if we want
 }
@@ -118,19 +122,19 @@ fn updateLoaded() void {
 
     var changed = false;
 
-    while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + 160 + 106 and level_ul_x < 8) {
+    while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + chunk_size + (chunk_size / 2) and level_ul_x < chunk_count - 2) {
         level_ul_x += 1;
         changed = true;
     }
-    while(player_pos_idx[w4.x] < ulLevelFloat()[w4.x] + 54 and level_ul_x > 0) {
+    while(player_pos_idx[w4.x] < ulLevelFloat()[w4.x] + (chunk_size / 2) and level_ul_x > 0) {
         level_ul_x -= 1;
         changed = true;
     }
-    while(player_pos_idx[w4.y] > ulLevelFloat()[w4.y] + 160 + 106 and level_ul_y < 8) {
+    while(player_pos_idx[w4.y] > ulLevelFloat()[w4.y] + chunk_size + (chunk_size / 2) and level_ul_y < chunk_count - 2) {
         level_ul_y += 1;
         changed = true;
     }
-    while(player_pos_idx[w4.y] < ulLevelFloat()[w4.y] + 54 and level_ul_y > 0) {
+    while(player_pos_idx[w4.y] < ulLevelFloat()[w4.y] + (chunk_size / 2) and level_ul_y > 0) {
         level_ul_y -= 1;
         changed = true;
     }
@@ -141,8 +145,8 @@ fn updateLoaded() void {
 }
 
 fn getWorldPixel(pos: w4.Vec2) u2 {
-    const ul_pos = w4.Vec2{level_ul_x * 160, level_ul_y * 160};
-    const center_pos = ul_pos + w4.Vec2{160, 160};
+    const ul_pos = w4.Vec2{level_ul_x * chunk_size, level_ul_y * chunk_size};
+    const center_pos = ul_pos + w4.Vec2{chunk_size, chunk_size};
 
     if(pos[w4.x] >= center_pos[w4.x] and pos[w4.y] >= center_pos[w4.y]) {
         return level_br.tex().get(pos - w4.Vec2{center_pos[w4.x], center_pos[w4.y]});
@@ -512,7 +516,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
