@@ -195,7 +195,11 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
 
     const res = getWorldPixel(pos);
     
-    if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) {
+    if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) blk: {
+        if(pos_float[w4.x] >= 411 and pos_float[w4.x] <= 441 and pos_float[w4.y] >= 186) {
+            break :blk;
+        }
+
         // rain effect
         // const point_rel = pos - w4.Vec2{180, 0};
         const point_rel = (pos_float - Vec2f{180, 0});
