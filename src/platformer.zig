@@ -167,19 +167,59 @@ fn getWorldPixelRaw(pos: w4.Vec2) u2 {
     }
     return level_ul.tex().get(pos - w4.Vec2{ul_pos[w4.x], ul_pos[w4.y]});
 }
+/// inclusive
+fn pointWithin(pos: w4.Vec2, ul: w4.Vec2, br: w4.Vec2) bool {
+    return @reduce(.And, pos >= ul)
+    and @reduce(.And, pos <= br);
+}
 fn getWorldPixel(pos: w4.Vec2) u2 {
     const res = getWorldPixelRaw(pos);
-    if(state.door_0_unlocked
-    and res == 0b00
-    and @reduce(.And, pos >= w4.Vec2{143, 56})
-    and @reduce(.And, pos <= w4.Vec2{148, 103})) {
+    if(state.door_0_unlocked and res == 0b00 and pointWithin(pos, .{143, 56}, .{148, 103})) {
         return 0b11;
     }
-    if(state.door_0_unlocked
-    and @reduce(.And, pos >= w4.Vec2{124, 92})
-    and @reduce(.And, pos <= w4.Vec2{130, 100})) {
+    if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
         return 0b11;
     }
+
+    return res;
+}
+fn rand(seed: u64) u32 {
+    var r = std.rand.Xoshiro256.init(seed);
+    return r.random().int(u32);
+}
+fn getScreenPixel(pos_float: Vec2f) u2 {
+    var pos = w4.Vec2{
+        @floatToInt(i32, @floor(pos_float[w4.x])),
+        @floatToInt(i32, @floor(pos_float[w4.y])),
+    };
+
+    const res = getWorldPixel(pos);
+    
+    if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) {
+        // rain effect
+        // const point_rel = pos - w4.Vec2{180, 0};
+        const point_rel = (pos_float - Vec2f{180, 0});
+        const y_float = point_rel[w4.y] / (209 - 0);
+
+        var phase = @intToFloat(f32, state.frame % (60 * 60 * 60 * 24)) / 20.0;
+
+        const randv = rand(@floatToInt(u64, point_rel[w4.x] * 2));
+        const randw = @intToFloat(f32, (randv / 60) % 60) / 60.0;
+        const val = @intToFloat(f32, randv % 60) / 60;
+
+        phase += val;
+
+        const shift = @divFloor(phase, 1.0);
+        phase += shift * randw;
+
+        phase = @mod(phase, 1.0);
+
+        if(y_float >= phase and y_float < phase + 0.1) {
+            if(y_float < phase + 0.05) return 0b01;
+            return 0b10;
+        }
+    }
+
     return res;
 }
 
@@ -385,11 +425,7 @@ export fn update() void {
 
             var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
             var pos_world = Vec2f{x, y} / scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / scale;
-            var pos_world_int = w4.Vec2{
-                @floatToInt(i32, @floor(pos_world[w4.x])),
-                @floatToInt(i32, @floor(pos_world[w4.y])),
-            };
-            var pixel = getWorldPixel(pos_world_int);
+            var pixel = getScreenPixel(pos_world);
 
             w4.ctx.set(pos_screen, pixel);
         }
