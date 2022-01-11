@@ -160,6 +160,39 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     return level_ul.tex().get(pos - w4.Vec2{ul_pos[w4.x], ul_pos[w4.y]});
 }
 
+fn playerTouching(ul: w4.Vec2, br: w4.Vec2) bool {
+    const player_pos = state.player.posInt();
+    const player_size = state.player.size;
+
+    if(@reduce(.Or, player_pos + player_size <= ul)) return false;
+    if(@reduce(.Or, player_pos > br)) return false;
+    return true;
+}
+
+fn updateWorld() void {
+    // const player_pos = state.player.posInt();
+    // 39,84…45,91
+
+    // themeMix(theme_0, theme_1, 0.5);
+    w4.PALETTE.* = color_themes[3];
+
+    if(playerTouching(.{39, 84}, .{45, 91})) {
+        w4.PALETTE.* = themeMix(
+            w4.PALETTE.*,
+            color_themes[6],
+            1 - @minimum(@intToFloat(f32, state.gaining_point) / 10, 1),
+        );
+        if(state.gaining_point == 0) {
+            // playEffect(flashColor(color_themes[6], 10))
+            // playEffect(circles);
+            w4.trace("entered!");
+        }
+        state.gaining_point +|= 1;
+    }else{
+        state.gaining_point = 0;
+    }
+}
+
 export fn update() void {
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
     // arena = fba.allocator();
@@ -199,7 +232,7 @@ export fn update() void {
         }
     }
 
-    if(!state.player.dash_used and w4.GAMEPAD1.button_1) {
+    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_1) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
             dir[w4.x] -= 1;
@@ -232,12 +265,11 @@ export fn update() void {
         state.player.jump_used = true;
     }
     if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
-    if(!flying) state.player.update();
+    if(!flying) {
+        state.player.update();
+        updateWorld();
+    }
 
-    const bg_time = @maximum(@mod(state.player.pos[w4.x] / 160.0, 1), 0);
-    w4.PALETTE.* = themeMix(color_themes[3], color_themes[4], bg_time);
-
-    // w4.PALETTE.* = color_themes[4];
     w4.DRAW_COLORS.* = 0x22;
 
     w4.ctx.blit(w4.Vec2{0, 0}, levels[0].tex(), .{0, 0}, .{160, 160}, .{1, 1, 1, 1}, .{1, 1});
@@ -247,8 +279,6 @@ export fn update() void {
         const y = @intToFloat(f32, y_usz);
         for(w4.range(160)) |_, x_usz| {
             const x = @intToFloat(f32, x_usz);
-
-            // -state.player.posInt(w4.Vec2{2, 2}) + w4.Vec2{80, 80}
 
             var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
             var pos_world = Vec2f{x, y} / scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / scale;
@@ -406,10 +436,10 @@ const Player = struct {
 
     vel_instant_prev: Vec2f = Vec2f{0, 0},
 
-    pub fn posInt(player: Player, scale: w4.Vec2) w4.Vec2 {
+    pub fn posInt(player: Player) w4.Vec2 {
         return w4.Vec2{
-            @floatToInt(i32, player.pos[w4.x] * @intToFloat(f32, scale[w4.x])),
-            @floatToInt(i32, -player.pos[w4.y] * @intToFloat(f32, scale[w4.y])),
+            @floatToInt(i32, player.pos[w4.x]),
+            @floatToInt(i32, -player.pos[w4.y]),
         };
     }
 
@@ -478,7 +508,7 @@ const Player = struct {
         if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
     }
     pub fn colliding(player: *Player) bool {
-        const pos = player.posInt(.{1, 1});
+        const pos = player.posInt();
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
             const value = getWorldPixel(pos + w4.Vec2{
                 @intCast(i32, x),
@@ -522,6 +552,9 @@ const State = struct {
     player: Player = .{},
     // if the player is on a moving platform, don't control this with player_vel.
     // we need like a player_environment_vel or something.
+
+    gaining_point: u8 = 0,
+    dash_unlocked: bool = false,
 };
 
 const color_themes = [_][4]u32{
