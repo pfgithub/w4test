@@ -342,7 +342,7 @@ export fn update() void {
     var flying = false;
     if(dev_mode) {
         if(w4.GAMEPAD2.button_1) {
-            scale = Vec2f{0.5, 0.5};
+            scale = Vec2f{1, 1};
             flying = true;
         }
         if(w4.GAMEPAD2.button_left) {
@@ -445,42 +445,55 @@ export fn update() void {
         }, .{1, 1},
     );
 
-    const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
-    const num_w = measureNumber(state.clicks) + 4;
-    w4.ctx.rect(
-        numbox_ur - w4.Vec2{num_w + 4, 0},
-        .{num_w + 4, 9},
-        0b00,
-    );
-    w4.ctx.rect(
-        numbox_ur - w4.Vec2{num_w + 3, -1},
-        .{num_w + 2, 7},
-        0b11,
-    );
-    drawNumber(
-        w4.ctx,
-        state.clicks,
-        numbox_ur + w4.Vec2{-2 + -4, 2},
-        0b00,
-    );
-    drawText(
-        w4.ctx,
-        "¢",
-        numbox_ur + w4.Vec2{-2 + -3, 2},
-        0b00,
-    );
+    {
+        const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
+        const num_w = measureNumber(state.clicks) + 4;
+        w4.ctx.rect(
+            numbox_ur - w4.Vec2{num_w + 4, 0},
+            .{num_w + 4, 9},
+            0b00,
+        );
+        w4.ctx.rect(
+            numbox_ur - w4.Vec2{num_w + 3, -1},
+            .{num_w + 2, 7},
+            0b10,
+        );
+        drawNumber(
+            w4.ctx,
+            state.clicks,
+            numbox_ur + w4.Vec2{-2 + -4, 2},
+            0b00,
+        );
+        drawText(
+            w4.ctx,
+            "¢",
+            numbox_ur + w4.Vec2{-2 + -3, 2},
+            0b00,
+        );
+    }
 
     if(show_note_this_frame) |note| {
+        const notew = @maximum(measureText(note.title), measureText(note.detail));
+        w4.ctx.rect(
+            .{2, 2},
+            .{notew + 4, 15},
+            0b00,
+        );
+        w4.ctx.rect(
+            .{3, 3},
+            .{notew + 2, 13},
+            0b10,
+        );
         drawText(
             w4.ctx,
             note.title,
-            .{2, 2},
+            .{4, 4},
             0b00,
         );
         drawText(
             w4.ctx,
             note.detail,
-            .{2, 8},
+            .{4, 10},
             0b01,
         );
     }
@@ -492,6 +505,18 @@ export fn update() void {
     //         }
     //     }
     // }
+}
+
+fn measureText(text: []const u8) i32 {
+    var res: i32 = 0;
+
+    var view = std.unicode.Utf8View.initUnchecked(text);
+    var iter = view.iterator();
+    while(iter.nextCodepoint()) |char| {
+        res += measureChar(char) + 1;
+    }
+
+    return @maximum(res - 1, 0);
 }
 
 fn measureChar(char: u21) i32 {
@@ -827,7 +852,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
