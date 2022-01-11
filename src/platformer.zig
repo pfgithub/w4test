@@ -386,7 +386,7 @@ export fn update() void {
     );
 
     const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
-    const num_w = measureNumber(state.clicks);
+    const num_w = measureNumber(state.clicks) + 4;
     w4.ctx.rect(
         numbox_ur - w4.Vec2{num_w + 4, 0},
         .{num_w + 4, 9},
@@ -400,7 +400,20 @@ export fn update() void {
     drawNumber(
         w4.ctx,
         state.clicks,
-        numbox_ur + w4.Vec2{-2, 2},
+        numbox_ur + w4.Vec2{-2 + -4, 2},
+        0b00,
+    );
+    drawText(
+        w4.ctx,
+        "¢",
+        numbox_ur + w4.Vec2{-2 + -3, 2},
+        0b00,
+    );
+
+    drawText(
+        w4.ctx,
+        "Test text! ¢ ↓ Chars",
+        .{2, 2},
         0b00,
     );
 
@@ -413,6 +426,59 @@ export fn update() void {
     // }
 }
 
+fn measureChar(char: u21) i32 {
+    if(char == 'i') return 1;
+    if(char == 'r') return 2;
+    if(char == 'm' or char == 'M' or char == 'w' or char == 'W') return 5;
+    return 3;
+}
+const CharPos = [2]i32;
+fn getCharPos(char: u21) CharPos {
+    switch(char) {
+        'A'...'Z' => return .{char - 'A', 1},
+        'a'...'z' => return .{char - 'a', 2},
+        '0'...'9' => return .{char - '0', 0},
+        '↓' => return .{0, 3},
+        '¢' => return .{1, 3},
+        ' ' => return .{11, 0},
+        else => return .{2, 3},
+    }
+}
+fn getCharPos2(char: u21) CharPos {
+    switch(char) {
+        'M' => return .{23, 0},
+        else => return .{11, 0},
+    }
+}
+fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) void {
+    const tex_pos = w4.Vec2{char_pos[0] * 3 + 0, char_pos[1] * 5 + 13};
+    tex.blit(
+        pos,
+        ui_texture,
+        tex_pos,
+        .{3, 5},
+        .{color, 4, 4, 4},
+        .{1, 1},
+    );
+}
+fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
+    const c1 = getCharPos(char);
+    const c2 = getCharPos2(char);
+
+    renderCharPos(tex, c1, pos, color);
+    renderCharPos(tex, c2, pos + w4.Vec2{3, 0}, color);
+}
+
+fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: u2) void {
+    var view = std.unicode.Utf8View.initUnchecked(text);
+    var iter = view.iterator();
+    var i: i32 = 0;
+    var pos = pos_ul;
+    while(iter.nextCodepoint()) |char| : (i += 1) {
+        renderChar(tex, char, pos, color);
+        pos += w4.Vec2{measureChar(char) + 1, 0};
+    }
+}
 fn measureNumber(num_initial: f32) i32 {
     var num = num_initial;
     var iter = false;
@@ -435,23 +501,12 @@ fn drawNumber(tex: w4.Tex(.mut), num_initial: f32, ur_initial: w4.Vec2, color: u
     // to.
     while(num > 0.999 or !iter) {
         iter = true;
-        const digit = @floatToInt(i32, @mod(num, 10));
+        const digit = @floatToInt(u8, @mod(num, 10));
         num = @divFloor(num, 10);
 
-        const digit_pos = w4.Vec2{
-            digit * 3 + 0,
-            13,
-        };    
-        ur -= w4.Vec2{4, 0};
-
-        tex.blit(
-            ur + w4.Vec2{1, 0},
-            ui_texture,
-            digit_pos,
-            .{3, 5},
-            .{color, 4, 4, 4},
-            .{1, 1},
-        );
+        ur -= w4.Vec2{3, 0};
+        renderChar(tex, '0' + digit, ur, color);
+        ur -= w4.Vec2{1, 0};
     }
 }
 
