@@ -728,7 +728,7 @@ const Player = struct {
             player.dash_used = false;
             player.vel_instant_prev[w4.x] *= 0.6;
             if(prev_on_ground != 0) {
-                const volume_float = @minimum(@maximum(-prev_y_vel / 20.0 * 100.0, 0), 100);
+                const volume_float = @minimum(@maximum(-prev_y_vel / 10.0 * 100.0, 0), 100);
                 const volume_int = std.math.lossyCast(u32, volume_float);
                 if(volume_int > 5) {
                     w4.tone(.{.start = 150}, .{.release = 18}, volume_int, .{.channel = .noise});
