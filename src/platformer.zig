@@ -251,10 +251,17 @@ fn updateWorld() void {
     // }
 }
 
+const Note = struct {
+    title: []const u8,
+    detail: []const u8,
+};
+var show_note_this_frame: ?Note = null;
+
 fn showNote(a: []const u8, b: []const u8) void {
-    _ = a;
-    _ = b;
-    // TODO
+    show_note_this_frame = Note{
+        .title = a,
+        .detail = b,
+    };
 }
 fn flashColor(color: [4]u32, duration: u8) void {
     _ = color;
@@ -279,6 +286,7 @@ export fn update() void {
     state.frame += 1;
 
     dash_down_this_frame = false;
+    show_note_this_frame = null;
 
     updateLoaded();
 
@@ -410,12 +418,20 @@ export fn update() void {
         0b00,
     );
 
-    drawText(
-        w4.ctx,
-        "Test text! ¢ ↓ Chars",
-        .{2, 2},
-        0b00,
-    );
+    if(show_note_this_frame) |note| {
+        drawText(
+            w4.ctx,
+            note.title,
+            .{2, 2},
+            0b00,
+        );
+        drawText(
+            w4.ctx,
+            note.detail,
+            .{2, 8},
+            0b01,
+        );
+    }
 
     // for(w4.range(160)) |_, y| {
     //     for(w4.range(160)) |_, x| {
@@ -427,27 +443,33 @@ export fn update() void {
 }
 
 fn measureChar(char: u21) i32 {
-    if(char == 'i') return 1;
-    if(char == 'r') return 2;
-    if(char == 'm' or char == 'M' or char == 'w' or char == 'W') return 5;
-    return 3;
+    return switch(char) {
+        'i' => 1,
+        'r' => 2,
+        'm', 'M' => 5,
+        'w', 'W' => 5,
+        '.' => 1,
+        ':' => 1,
+        else => 3,
+    };
 }
 const CharPos = [2]i32;
 fn getCharPos(char: u21) CharPos {
     switch(char) {
         'A'...'Z' => return .{char - 'A', 1},
         'a'...'z' => return .{char - 'a', 2},
-        '0'...'9' => return .{char - '0', 0},
+        '0'...':' => return .{char - '0', 0},
         '↓' => return .{0, 3},
         '¢' => return .{1, 3},
-        ' ' => return .{11, 0},
-        else => return .{2, 3},
+        '.' => return .{11, 0},
+        ' ' => return .{2, 3},
+        else => return .{3, 3},
     }
 }
 fn getCharPos2(char: u21) CharPos {
     switch(char) {
         'M' => return .{23, 0},
-        else => return .{11, 0},
+        else => return .{2, 3},
     }
 }
 fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) void {
@@ -463,9 +485,9 @@ fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) 
 }
 fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
     const c1 = getCharPos(char);
-    const c2 = getCharPos2(char);
-
     renderCharPos(tex, c1, pos, color);
+
+    const c2 = getCharPos2(char);
     renderCharPos(tex, c2, pos + w4.Vec2{3, 0}, color);
 }
 
