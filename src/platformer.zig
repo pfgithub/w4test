@@ -35,7 +35,10 @@ const std = @import("std");
 const w4 = @import("wasm4.zig");
 const img = @import("imgconv.zig");
 
-const dev_mode = true;
+const dev_mode = switch(@import("builtin").mode) {
+    .Debug => true,
+    else => false,
+};
 
 // var alloc_buffer: [1000]u8 = undefined;
 
