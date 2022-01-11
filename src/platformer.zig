@@ -206,7 +206,13 @@ fn updateWorld() void {
     // 39,84…45,91
 
     // themeMix(theme_0, theme_1, 0.5);
-    w4.PALETTE.* = color_themes[3];
+    // if(!playerTouching(.{15, 32}, .{148, 120})) {
+    // }
+    w4.PALETTE.* = themeMix(
+        color_themes[3],
+        color_themes[5],
+        @maximum(@minimum((state.player.pos[w4.x] - 148.0) / 35.0, 1.0), 0.0),
+    );
 
     if(playerTouching(.{39, 84}, .{45, 91})) {
         w4.PALETTE.* = themeMix(
