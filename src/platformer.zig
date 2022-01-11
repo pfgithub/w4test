@@ -286,6 +286,10 @@ fn updateWorld() void {
     }else if(-state.player.pos[w4.y] >= 209) {
         w4.PALETTE.* = color_themes[2];
     }
+    if(playerTouching(.{839, 418}, .{878, 437})) {
+        const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], mix);
+    }
 
     if(playerTouching(.{39, 84}, .{45, 91})) {
         w4.PALETTE.* = themeMix(
@@ -335,44 +339,24 @@ fn updateWorld() void {
     }
 
     if(playerTouching(.{421, 201}, .{426, 201})) {
-        if(state.farm_0_purchased) {
-            const c = state.farm_0_coins;
-            if(c == 0) {
-                showNote("Your farm", "No ¢ ready yet. Come back later.");
-            }else{
-                showNote("Your farm", "Press ↓ to collect ¢");
-            }
-            if(use_key_this_frame) {
-                state.farm_0_coins = 0;
-                state.clicks += c;
-                if(c == 0) {
-                    // failure sound
-                    w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
-                }else{
-                    // success sound
-                    w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
-                }
-            }
-        }else{
-            if(use_key_this_frame) {
-                if(state.clicks >= 50) {
-                    state.clicks -= 50;
-                    state.farm_0_purchased = true;
-
-                    // success sound
-                    w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
-                }else{
-                    // failure sound
-                    w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
-                }
-            }
-            showNote("Purchase farm: 50¢", "↓. Produces 1¢ per 10s");
-        }
+        autoFarmPlate(&state.farm_0_purchased, &state.farm_0_coins,
+            50, "Purchase farm: 50¢", "↓. Produces 1¢ per 10s",
+            "Your farm (1¢/10s)",
+        );
+    }
+    if(playerTouching(.{848, 434}, .{852, 434})) {
+        autoFarmPlate(&state.farm_1_purchased, &state.farm_1_coins,
+            100, "Purchase mine: 100¢", "↓. Produces 2¢ per 10s",
+            "Your mine (2¢/10s)",
+        );
     }
 
-    if(state.farm_0_purchased) {
-        if(state.frame % (60 * 10) == 0) {
+    if(state.frame % (60 * 10) == 0) {
+        if(state.farm_0_purchased) {
             state.farm_0_coins += 1;
+        }
+        if(state.farm_1_purchased) {
+            state.farm_1_coins += 2;
         }
     }
 
@@ -380,6 +364,42 @@ fn updateWorld() void {
     //     state.door_0_unlocked = true;
     //     state.clicks -= 10;
     // }
+}
+
+fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, msg2: []const u8, label: []const u8) void {
+    if(purchased.*) {
+        const c = coins.*;
+        if(c == 0) {
+            showNote(label, "No ¢ ready yet. Come back later.");
+        }else{
+            showNote(label, "Press ↓ to collect ¢");
+        }
+        if(use_key_this_frame) {
+            coins.* = 0;
+            state.clicks += c;
+            if(c == 0) {
+                // failure sound
+                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+            }else{
+                // success sound
+                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+            }
+        }
+    }else{
+        if(use_key_this_frame) {
+            if(state.clicks >= price) {
+                state.clicks -= price;
+                purchased.* = true;
+
+                // success sound
+                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+            }else{
+                // failure sound
+                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+            }
+        }
+        showNote(msg1, msg2);
+    }
 }
 
 const Note = struct {
@@ -610,6 +630,7 @@ fn measureChar(char: u21) i32 {
         'w', 'W' => 5,
         '.' => 1,
         ':' => 1,
+        '(', ')' => 2,
         else => 3,
     };
 }
@@ -623,6 +644,9 @@ fn getCharPos(char: u21) CharPos {
         '¢' => return .{1, 3},
         '.' => return .{11, 0},
         ' ' => return .{2, 3},
+        '/' => return .{4, 3},
+        '(' => return .{5, 3},
+        ')' => return .{6, 3},
         else => return .{3, 3},
     }
 }
@@ -954,6 +978,8 @@ const State = struct {
 
     farm_0_purchased: bool = false,
     farm_0_coins: f32 = 0,
+    farm_1_purchased: bool = false,
+    farm_1_coins: f32 = 0,
 };
 
 const color_themes = [_][4]u32{
