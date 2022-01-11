@@ -235,7 +235,8 @@ fn updateWorld() void {
                 state.door_0_unlocked = true;
                 flashColor(w4.PALETTE.*, 5);
                 // playSound([_]Tone{});
-                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+                // w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50}); // happy sounding
+                w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
             }else{
                 // play failure sound
                 w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
@@ -316,8 +317,10 @@ export fn update() void {
     }
 
     if(w4.GAMEPAD1.button_1 and w4.GAMEPAD1.button_down) {
-        state.player.dash_down_key_held = true;
-        dash_down_this_frame = true;
+        if(!state.player.dash_down_key_held) {
+            state.player.dash_down_key_held = true;
+            dash_down_this_frame = true;
+        }
     }else{
         state.player.dash_down_key_held = false;
     }
@@ -340,6 +343,7 @@ export fn update() void {
             state.player.dash_used = true;
             state.player.vel_dash = dir * @splat(2, @as(f32, 2.2));
             state.player.vel_gravity = Vec2f{0, 0};
+            w4.tone(.{.start = 330, .end = 460}, .{.release = 18}, 41, .{.channel = .noise});
         }
     }
     if(w4.GAMEPAD1.button_left) {
@@ -671,6 +675,9 @@ const Player = struct {
 
         const vec_instant = player.vel_gravity + player.vel_instant + player.vel_dash;
 
+        const prev_on_ground = player.on_ground;
+        const prev_y_vel = vec_instant[w4.y];
+
         const step_x_count = @ceil(std.math.fabs(vec_instant[w4.x])) * 2;
         const step_x = if(step_x_count == 0) @as(f32, 0) else vec_instant[w4.x] / step_x_count;
         for(w4.range(@floatToInt(usize, @ceil(step_x_count)))) |_| {
@@ -719,6 +726,13 @@ const Player = struct {
         if(player.on_ground == 0) {
             player.dash_used = false;
             player.vel_instant_prev[w4.x] *= 0.6;
+            if(prev_on_ground != 0) {
+                const volume_float = @minimum(@maximum(-prev_y_vel / 20.0 * 100.0, 0), 100);
+                const volume_int = std.math.lossyCast(u32, volume_float);
+                if(volume_int > 5) {
+                    w4.tone(.{.start = 150}, .{.release = 18}, volume_int, .{.channel = .noise});
+                }
+            }
         }else{
             player.vel_instant_prev[w4.x] *= 0.8;
         }
