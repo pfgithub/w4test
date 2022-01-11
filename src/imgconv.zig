@@ -126,6 +126,9 @@ pub fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !voi
             },
         }
     }
+
+    writer.flushBits() catch {};
+
     std.log.debug("decompression read {d}/{d}", .{written_count, dcd.size[0] * dcd.size[1]});
     if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
 }
@@ -211,6 +214,8 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
     // note: we don't care about the ending because the reader knows how many
     // bytes it's expecting.
 
+    try writer.flushBits();
+
     std.log.debug("compression coded for {d}/{d}", .{written_count, size[0] * size[1]});
     if(written_count < size[0] * size[1]) unreachable;
 
@@ -290,9 +295,10 @@ pub fn processSubimage(
             try bit_stream_be.writeBits(pixel, 2);
         }
     }
+    try bit_stream_be.flushBits();
 
     const compressed = try compress2bpp(alloc, al.items, subsize);
-    verifyCompression(alloc, al.items, compressed, subsize) catch @panic("bad code");
+    try verifyCompression(alloc, al.items, compressed, subsize);
 
     // std.log.info("- chunk {},{}: {:.2} ({d:0.2}%) → {:.2} ({d:0.2}%)", .{
     //     ul_x, ul_y,
