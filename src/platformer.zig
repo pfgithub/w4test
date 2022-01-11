@@ -297,6 +297,10 @@ fn updateWorld() void {
         showNote("Unlock door: 10¢", "Press ↓ to activate.");
     }
 
+    if(playerTouching(.{421, 201}, .{426, 201})) {
+        showNote("Purchase farm: 50¢", "↓. Produces 1¢ per 10s");
+    }
+
     // if(state.clicks > 10 and !state.door_0_unlocked) {
     //     state.door_0_unlocked = true;
     //     state.clicks -= 10;
@@ -549,7 +553,10 @@ fn getCharPos(char: u21) CharPos {
 }
 fn getCharPos2(char: u21) CharPos {
     switch(char) {
-        'M' => return .{23, 0},
+        'M' => return .{12, 0},
+        'W' => return .{22, 0},
+        'm' => return .{12, 3},
+        'w' => return .{22, 3},
         else => return .{2, 3},
     }
 }
