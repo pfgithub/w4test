@@ -554,11 +554,10 @@ export fn update() void {
         state.player.jump_used = true;
     }
     if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
-    if(!flying) {
-        state.player.disallow_noise -|= 1;
-        state.player.update();
-        updateWorld();
-    }
+
+    state.player.disallow_noise -|= 1;
+    if(!flying) state.player.update();
+    updateWorld();
 
     w4.DRAW_COLORS.* = 0x22;
 
