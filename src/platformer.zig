@@ -335,9 +335,45 @@ fn updateWorld() void {
     }
 
     if(playerTouching(.{421, 201}, .{426, 201})) {
-        showNote("Purchase farm: 50¢", "↓. Produces 1¢ per 10s");
-        // if(purchased)
-        //    say "press ↓ to collect."
+        if(state.farm_0_purchased) {
+            const c = state.farm_0_coins;
+            if(c == 0) {
+                showNote("Your farm", "No ¢ ready yet. Come back later.");
+            }else{
+                showNote("Your farm", "Press ↓ to collect ¢");
+            }
+            if(use_key_this_frame) {
+                state.farm_0_coins = 0;
+                state.clicks += c;
+                if(c == 0) {
+                    // failure sound
+                    w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+                }else{
+                    // success sound
+                    w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+                }
+            }
+        }else{
+            if(use_key_this_frame) {
+                if(state.clicks >= 50) {
+                    state.clicks -= 50;
+                    state.farm_0_purchased = true;
+
+                    // success sound
+                    w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+                }else{
+                    // failure sound
+                    w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+                }
+            }
+            showNote("Purchase farm: 50¢", "↓. Produces 1¢ per 10s");
+        }
+    }
+
+    if(state.farm_0_purchased) {
+        if(state.frame % (60 * 10) == 0) {
+            state.farm_0_coins += 1;
+        }
     }
 
     // if(state.clicks > 10 and !state.door_0_unlocked) {
@@ -915,6 +951,9 @@ const State = struct {
 
     dash_unlocked: bool = false,
     door_0_unlocked: bool = false,
+
+    farm_0_purchased: bool = false,
+    farm_0_coins: f32 = 0,
 };
 
 const color_themes = [_][4]u32{
