@@ -1,27 +1,35 @@
-// ok here's my idea
-// I want to make a clicker game
-// but it's a platformer/metroidvania or something
-// like you have to explore the world to find shops to get upgrades to your clicks
-
-// so we'll start in a room with a button you can click
-// click it as much as you'd like
-// and then you'll have to venture out to find upgrades
-// that's a kinda neat idea i think
-
-
-// draw levels in a pixel art editor
-// we might have to switch to tilemaps due to space constraints
-
-// (160 * 160 * 2) / 8 = 6,400 bytes per image
-// = 6.4 or 6.25kb
-// limit is 64kb = max like 10 scenes
-// yeah we'll have to do tiles or lines or something
-// we could probably apply some trivial compression to get it down to like 100b or smth
-// idk. huh.
-
-// lighting:
-// just do a bunch of raycasts I guess
-// and then connect the dots in between
+// ok let's make some ideas
+// so:
+// - you can click
+// - it'll cost like 25 or something to get out the door and start exploring the world
+// ok:
+// - so we'll have more of those click things
+// - we could have like something you have to jump up into - like a parkour thing
+//   and it gives a bunch of clicks but you have to climb back up to click it again
+// and then the main thing I wanted:
+// - we can have shops and stuff
+// - somehow you need to be able to get the dash upgrade
+//
+// ok and then fun stuff:
+// - we can decorate!
+//   (may need to improve the compression a bit once this starts happening)
+// - like we can do grass on the floor and we can put darker dots and stuff
+// - we can change the background colors in different areas
+//   (use colormix obviously. no instant transitions)
+//
+// ok
+// this could be pretty neat
+//
+// oh also I could do death
+// like you die in a spot and it spawns a grave or something idk
+//
+//
+// also consider:
+// rather than just having an area you can jump in to gain clicks,
+// maybe make it so while you're in it you can press the mouse button to get clicks
+// that'd let us do drops that are click areas. would be fun maybe
+// and then we can do like a fancy rainbow effect in the background while you're
+// standing there and stuff idk
 
 const std = @import("std");
 const w4 = @import("wasm4.zig");
