@@ -180,9 +180,6 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     if(state.door_0_unlocked and res == 0b00 and pointWithin(pos, .{143, 56}, .{148, 103})) {
         return 0b11;
     }
-    if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
-        return 0b11;
-    }
 
     return res;
 }
@@ -197,6 +194,10 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
     };
 
     const res = getWorldPixel(pos);
+
+    if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
+        return 0b11;
+    }
     
     if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) blk: {
         // we'll want to play a rain sound when this is visible on screen probably
