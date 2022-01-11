@@ -306,6 +306,14 @@ fn updateWorld() void {
         }
         incrFrameTimer();
     }
+    if(playerTouching(.{755, 315}, .{775, 321})) {
+        w4.PALETTE.* = color_themes[6];
+        if(state.region_frame_timer == 0) {
+            state.clicks += 10;
+            w4.tone(.{.start = 900}, .{.release = 16}, 100, .{.channel = .triangle});
+        }
+        incrFrameTimer();
+    }
 
     if(playerTouching(.{124, 100}, .{130, 100}) and !state.door_0_unlocked) {
         if(use_key_this_frame) {
