@@ -199,7 +199,12 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
     const res = getWorldPixel(pos);
     
     if(res >= 0b10 and pointWithin(pos, .{188, 0}, .{1557, 209})) blk: {
+        // we'll want to play a rain sound when this is visible on screen probably
+        // and we can change the player step sound
         if(pos_float[w4.x] >= 411 and pos_float[w4.x] <= 441 and pos_float[w4.y] >= 186) {
+            break :blk;
+        }
+        if(pos_float[w4.x] >= 597 and pos_float[w4.x] <= 623 and pos_float[w4.y] >= 192) {
             break :blk;
         }
 
@@ -253,8 +258,11 @@ fn updateWorld() void {
     // 39,84…45,91
 
     // themeMix(theme_0, theme_1, 0.5);
-    // if(!playerTouching(.{15, 32}, .{148, 120})) {
-    // }
+
+    // ok what I want I think is to be able to define
+    // - a rect in which the theme is a set value
+    // - a transition rect
+
     w4.PALETTE.* = themeMix(
         color_themes[3],
         color_themes[5],
@@ -270,6 +278,12 @@ fn updateWorld() void {
         flat = @maximum(@minimum(flat, 1.0), 0.0);
 
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], flat);
+    }
+    if(playerTouching(.{597, 209}, .{623, 266})) {
+        const mix = @maximum(@minimum((-state.player.pos[w4.y] - 209) / (266.0 - 209.0), 1.0), 0.0);
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[2], mix);
+    }else if(-state.player.pos[w4.y] >= 209) {
+        w4.PALETTE.* = color_themes[2];
     }
 
     if(playerTouching(.{39, 84}, .{45, 91})) {
