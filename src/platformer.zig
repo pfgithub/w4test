@@ -193,6 +193,8 @@ fn updateWorld() void {
     }
 }
 
+const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
+
 export fn update() void {
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
     // arena = fba.allocator();
@@ -304,6 +306,15 @@ export fn update() void {
             player_color,
             player_color,
         }, .{1, 1},
+    );
+
+    w4.ctx.blit(
+        w4.Vec2{0, 0},
+        ui_texture,
+        .{0, 0},
+        .{80, 80},
+        .{1, 2, 3, 4},
+        .{1, 1}
     );
 
     // for(w4.range(160)) |_, y| {

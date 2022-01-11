@@ -275,12 +275,17 @@ pub fn range(len: usize) []const void {
     return @as([*]const void, &[_]void{})[0..len];
 }
 
+const Opts = struct {
+    compress: bool,
+};
+
 pub fn processSubimage(
     alloc: std.mem.Allocator,
     image: []const u8,
     ul_x: usize, ul_y: usize,
     ul_w: usize, ul_h: usize,
     size: w4.Vec2,
+    opts: Opts,
 ) ![]const u8 {
     var al = std.ArrayList(u8).init(alloc);
     var bit_stream_be = std.io.bitWriter(.Little, al.writer());
@@ -296,6 +301,8 @@ pub fn processSubimage(
         }
     }
     try bit_stream_be.flushBits();
+
+    if(!opts.compress) return al.toOwnedSlice();
 
     const compressed = try compress2bpp(alloc, al.items, subsize);
     try verifyCompression(alloc, al.items, compressed, subsize);
@@ -324,11 +331,14 @@ pub fn main() !void {
     var src_file: ?[:0]const u8 = null;
     var dest_file: ?[:0]const u8 = null;
     var sb20x20_80x80 = false;
+    var compress = false;
 
     for(args[1..]) |arg| {
         if(std.mem.startsWith(u8, arg, "-")) {
             if(std.mem.eql(u8, arg, "--splitby=20x20-80x80")) {
                 sb20x20_80x80 = true;
+            }else if(std.mem.eql(u8, arg, "--compress")) {
+                compress = true;
             }else{
                 std.log.err("unknown arg", .{});
                 std.process.exit(0);
@@ -377,7 +387,7 @@ pub fn main() !void {
         var items = std.ArrayList([]const u8).init(alloc);
         for(range(20)) |_, y_block| {
             for(range(20)) |_, x_block| {
-                try items.append(try processSubimage(alloc, image_data, x_block * 80, y_block * 80, 80, 80, total_size));
+                try items.append(try processSubimage(alloc, image_data, x_block * 80, y_block * 80, 80, 80, total_size, .{.compress = compress}));
             }
         }
         var index: u32 = 0;
@@ -392,7 +402,7 @@ pub fn main() !void {
             try final.appendSlice(item);
         }
     }else{
-        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, total_size));
+        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, total_size, .{.compress = compress}));
     }
 
     try std.fs.cwd().writeFile(dest_file.?, final.items);
