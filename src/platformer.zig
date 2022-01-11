@@ -229,7 +229,7 @@ fn updateWorld() void {
     }
 
     if(playerTouching(.{124, 100}, .{130, 100}) and !state.door_0_unlocked) {
-        if(dash_down_this_frame) {
+        if(use_key_this_frame) {
             if(state.clicks >= 10) {
                 state.clicks -= 10;
                 state.door_0_unlocked = true;
@@ -243,7 +243,7 @@ fn updateWorld() void {
             }
         }
 
-        showNote("Unlock door: 10¢", "Press x and ↓ to activate.");
+        showNote("Unlock door: 10¢", "Press ↓ to activate.");
     }
 
     // if(state.clicks > 10 and !state.door_0_unlocked) {
@@ -272,7 +272,7 @@ fn flashColor(color: [4]u32, duration: u8) void {
 
 const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
 
-var dash_down_this_frame = false;
+var use_key_this_frame = false;
 
 export fn update() void {
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
@@ -286,7 +286,7 @@ export fn update() void {
     }
     state.frame += 1;
 
-    dash_down_this_frame = false;
+    use_key_this_frame = false;
     show_note_this_frame = null;
 
     updateLoaded();
@@ -316,13 +316,13 @@ export fn update() void {
         }
     }
 
-    if(w4.GAMEPAD1.button_1 and w4.GAMEPAD1.button_down) {
-        if(!state.player.dash_down_key_held) {
-            state.player.dash_down_key_held = true;
-            dash_down_this_frame = true;
+    if(w4.GAMEPAD1.button_down) {
+        if(!state.player.down_key_held) {
+            state.player.down_key_held = true;
+            use_key_this_frame = true;
         }
     }else{
-        state.player.dash_down_key_held = false;
+        state.player.down_key_held = false;
     }
     if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_1) {
         var dir = Vec2f{0, 0};
@@ -336,6 +336,7 @@ export fn update() void {
             dir[w4.y] += 1;
         }
         if(w4.GAMEPAD1.button_down) {
+            use_key_this_frame = false;
             dir[w4.y] -= 1;
         }
         if(dir[w4.x] != 0 or dir[w4.y] != 0) {
@@ -654,7 +655,7 @@ const Player = struct {
     on_ground: u8 = 0,
     dash_used: bool = false,
     jump_used: bool = false,
-    dash_down_key_held: bool = false,
+    down_key_held: bool = false,
 
     vel_instant_prev: Vec2f = Vec2f{0, 0},
 
@@ -778,7 +779,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
