@@ -299,6 +299,8 @@ fn updateWorld() void {
 
     if(playerTouching(.{421, 201}, .{426, 201})) {
         showNote("Purchase farm: 50¢", "↓. Produces 1¢ per 10s");
+        // if(purchased)
+        //    say "press ↓ to collect."
     }
 
     // if(state.clicks > 10 and !state.door_0_unlocked) {
