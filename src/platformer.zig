@@ -219,8 +219,8 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         phase = @mod(phase, 1.0);
 
         if(y_float >= phase and y_float < phase + 0.1) {
-            if(y_float < phase + 0.05) return 0b01;
-            return 0b10;
+            // if(y_float < phase + 0.05) return 0b01;
+            return 0b01;
         }
     }
 
@@ -257,6 +257,17 @@ fn updateWorld() void {
         color_themes[5],
         @maximum(@minimum((state.player.pos[w4.x] - 148.0) / 35.0, 1.0), 0.0),
     );
+    if(playerTouching(.{411, 187}, .{441, 209})) {
+        var flat = (state.player.pos[w4.x] - 411.0) / (441.0 - 411.0);
+        flat *= 2.0;
+        flat -= 1.0;
+        flat = std.math.fabs(flat);
+        flat = 1 - flat;
+        flat *= 2;
+        flat = @maximum(@minimum(flat, 1.0), 0.0);
+
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], flat);
+    }
 
     if(playerTouching(.{39, 84}, .{45, 91})) {
         w4.PALETTE.* = themeMix(
