@@ -184,7 +184,7 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
         return 0b10;
     }
     if(state.dash_unlocked and pointWithin(pos, .{755, 630}, .{765, 640})) {
-        return 0b10;
+        return 0b11;
     }
 
     return res;
@@ -261,6 +261,7 @@ fn playerTouching(ul: w4.Vec2, br: w4.Vec2) bool {
     if(@reduce(.Or, player_pos > br)) return false;
     return true;
 }
+var dash_key_used = false;
 
 var reset_frame_timer = true;
 fn incrFrameTimer() void {
@@ -316,6 +317,18 @@ fn updateWorld() void {
         const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[7], mix);
     }
+    const dash_unlock_area_color = if(state.dash_unlocked) (
+        color_themes[11]
+    ) else (
+        color_themes[12]
+    );
+    if(playerTouching(.{316, 531}, .{850, 801})) {
+        w4.PALETTE.* = dash_unlock_area_color;
+    }
+    if(playerTouching(.{331, 405}, .{409, 531})) {
+        const mix = @maximum(@minimum((-state.player.pos[w4.y] - 405) / (531 - 405), 1.0), 0.0);
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, dash_unlock_area_color, mix);
+    }
  
     if(playerTouching(.{39, 84}, .{45, 91})) {
         autoClickArea(1);
@@ -353,6 +366,12 @@ fn updateWorld() void {
             "Your windmill (3¢/10s)",
         );
     }
+    if(playerTouching(.{352, 376}, .{357, 376})) {
+        autoFarmPlate(&state.farm_3_purchased, &state.farm_3_coins,
+            5000, "Purchase cliff farm: 5,000¢", "↓. Produces 10¢ per 10s",
+            "Your cliff farm (10¢/10s)",
+        );
+    }
 
     if(playerTouching(.{755, 642}, .{765, 642})) {
         if(state.dash_unlocked) {
@@ -375,6 +394,9 @@ fn updateWorld() void {
         }
         if(state.farm_2_purchased) {
             state.farm_2_coins += 3;
+        }
+        if(state.farm_3_purchased) {
+            state.farm_3_coins += 10;
         }
     }
 
@@ -542,7 +564,10 @@ export fn update() void {
     }else{
         state.player.down_key_held = false;
     }
-    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2) {
+    if(!w4.GAMEPAD1.button_2) {
+        dash_key_used = false;
+    }
+    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2 and !dash_key_used) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
             dir[w4.x] -= 1;
@@ -558,6 +583,7 @@ export fn update() void {
             dir[w4.y] -= 1;
         }
         if(dir[w4.x] != 0 or dir[w4.y] != 0) {
+            dash_key_used = true;
             dir = normalize(dir);
             state.player.dash_used = true;
             state.player.vel_dash = dir * @splat(2, @as(f32, 2.2));
@@ -1055,6 +1081,8 @@ const State = struct {
     farm_1_coins: f32 = 0,
     farm_2_purchased: bool = false,
     farm_2_coins: f32 = 0,
+    farm_3_purchased: bool = false,
+    farm_3_coins: f32 = 0,
 };
 
 const color_themes = [_][4]u32{
@@ -1071,8 +1099,8 @@ const color_themes = [_][4]u32{
     .{ 0x2d1b00, 0x1e606e, 0x5ab9a8, 0xc4f0c2 }, //     blues
     .{ 0x071821, 0x306850, 0x86c06c, 0xe0f8cf }, //     w4 default
     .{ 0x002b59, 0x005f8c, 0x00b9be, 0x9ff4e5 }, //     aqua
-    .{ 0x210b1b, 0x4d222c, 0x9d654c, 0xcfab51 }, //     gold
-    .{ 0x000000, 0x382843, 0x7c6d80, 0xc7c6c6 }, //     deep purples
+    .{ 0x210b1b, 0x4d222c, 0x9d654c, 0xcfab51 }, // [!] gold [dash unlock area]
+    .{ 0x000000, 0x382843, 0x7c6d80, 0xc7c6c6 }, // [!] deep purples [dash unlock area]
 
     .{ 0x0f0f1b, 0x565a75, 0xc6b7be, 0xfafbf6 }, //     whites
 
