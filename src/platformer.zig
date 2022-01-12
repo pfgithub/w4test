@@ -332,7 +332,7 @@ fn updateWorld() void {
         }
     }
     if(-state.player.pos[w4.y] >= 209) {
-        const mix = scale(209, 244, -state.player.pos[w4.y], 100, 0, .constrain);
+        const mix = scale(209, 244, -state.player.pos[w4.y], @intToFloat(f32, rain_volume), 0, .constrain);
         rain_volume = @floatToInt(u32, mix);
     }
     if(playerTouching(.{839, 418}, .{878, 437})) {
