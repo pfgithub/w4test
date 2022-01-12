@@ -324,12 +324,16 @@ fn updateWorld() void {
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], flat);
     }
     if(playerTouching(.{597, 209}, .{623, 266})) {
-        const mix = @maximum(@minimum((-state.player.pos[w4.y] - 209) / (266.0 - 209.0), 1.0), 0.0);
+        const mix = scale(209, 266, -state.player.pos[w4.y], 0, 1, .constrain);
         w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[2], mix);
-        rain_volume = @floatToInt(u32, (1 - mix) * 100);
-    }else if(-state.player.pos[w4.y] >= 209) {
-        w4.PALETTE.* = color_themes[2];
-        rain_volume = 0;
+    }else{
+        if(-state.player.pos[w4.y] >= 209) {
+            w4.PALETTE.* = color_themes[2];
+        }
+    }
+    if(-state.player.pos[w4.y] >= 209) {
+        const mix = scale(209, 244, -state.player.pos[w4.y], 100, 0, .constrain);
+        rain_volume = @floatToInt(u32, mix);
     }
     if(playerTouching(.{839, 418}, .{878, 437})) {
         const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
