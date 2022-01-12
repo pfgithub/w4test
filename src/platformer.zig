@@ -263,6 +263,14 @@ fn playerTouching(ul: w4.Vec2, br: w4.Vec2) bool {
 }
 var dash_key_used = false;
 
+fn scale(min: f32, max: f32, value: f32, start_0: f32, end_0: f32, restrict: enum{constrain, no_constrain}) f32 {
+    const res = (end_0 - start_0) * ((value - min) / (max - min)) + start_0;
+    if(restrict == .no_constrain) return res;
+    const smin = @minimum(start_0, end_0);
+    const smax = @maximum(start_0, end_0);
+    return @minimum(@maximum(res, smin), smax);
+}
+
 var reset_frame_timer = true;
 fn incrFrameTimer() void {
     state.region_frame_timer +|= 1;
@@ -328,6 +336,13 @@ fn updateWorld() void {
     if(playerTouching(.{331, 405}, .{409, 531})) {
         const mix = @maximum(@minimum((-state.player.pos[w4.y] - 405) / (531 - 405), 1.0), 0.0);
         w4.PALETTE.* = themeMix(w4.PALETTE.*, dash_unlock_area_color, mix);
+    }
+    if(playerTouching(.{142, 209}, .{479, 314})) {
+        const mix = scale(427, 479, state.player.pos[w4.x], 1.0, 0.0, .constrain);
+        const mix2 = scale(287, 314, -state.player.pos[w4.y], 1.0, 0.0, .constrain);
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[10], @minimum(mix, mix2));
+    }else if(playerTouching(.{44, 147}, .{153, 359}) or playerTouching(.{153, 147}, .{170, 209})) {
+        w4.PALETTE.* = color_themes[10];
     }
  
     if(playerTouching(.{39, 84}, .{45, 91})) {
@@ -531,27 +546,27 @@ export fn update() void {
 
     updateLoaded();
 
-    var scale = Vec2f{2, 2};
+    var world_scale = Vec2f{2, 2};
     var flying = false;
     if(dev_mode) {
         if(w4.GAMEPAD2.button_1) {
-            scale = Vec2f{1, 1};
+            world_scale = Vec2f{1, 1};
             flying = true;
         }
         if(w4.GAMEPAD2.button_left) {
-            state.player.pos[w4.x] -= 2 / scale[w4.x];
+            state.player.pos[w4.x] -= 2 / world_scale[w4.x];
             flying = true;
         }
         if(w4.GAMEPAD2.button_right) {
-            state.player.pos[w4.x] += 2 / scale[w4.x];
+            state.player.pos[w4.x] += 2 / world_scale[w4.x];
             flying = true;
         }
         if(w4.GAMEPAD2.button_up) {
-            state.player.pos[w4.y] += 2 / scale[w4.y];
+            state.player.pos[w4.y] += 2 / world_scale[w4.y];
             flying = true;
         }
         if(w4.GAMEPAD2.button_down) {
-            state.player.pos[w4.y] -= 2 / scale[w4.y];
+            state.player.pos[w4.y] -= 2 / world_scale[w4.y];
             flying = true;
         }
     }
@@ -620,7 +635,7 @@ export fn update() void {
             const x = @intToFloat(f32, x_usz);
 
             var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
-            var pos_world = Vec2f{x, y} / scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / scale;
+            var pos_world = Vec2f{x, y} / world_scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / world_scale;
             var pixel = getScreenPixel(pos_world);
 
             w4.ctx.set(pos_screen, pixel);
@@ -1117,7 +1132,7 @@ const color_themes = [_][4]u32{
     .{ 0x332c50, 0x46878f, 0xe2f3e4, 0x94e344 }, // [!] greens cave ver [mine]
     .{ 0x2d1b00, 0x1e606e, 0x5ab9a8, 0xc4f0c2 }, //     blues
     .{ 0x071821, 0x306850, 0x86c06c, 0xe0f8cf }, //     w4 default
-    .{ 0x002b59, 0x005f8c, 0x00b9be, 0x9ff4e5 }, //     aqua
+    .{ 0x002b59, 0x005f8c, 0x00b9be, 0x9ff4e5 }, // [!] aqua [used in dash area]
     .{ 0x210b1b, 0x4d222c, 0x9d654c, 0xcfab51 }, // [!] gold [dash unlock area]
     .{ 0x000000, 0x382843, 0x7c6d80, 0xc7c6c6 }, // [!] deep purples [dash unlock area]
 
