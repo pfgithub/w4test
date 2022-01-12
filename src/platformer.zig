@@ -969,7 +969,7 @@ const Player = struct {
         }else{
             player.vel_instant_prev[w4.x] *= 0.8;
             if(-player.vel_gravity[w4.y] > 5 and player.disallow_noise == 0) {
-                const volume = @maximum(@minimum((-player.vel_gravity[w4.y] - 5) / 30, 1.0), 0.0) * 50;
+                const volume = @maximum(@minimum((-player.vel_gravity[w4.y] - 5) / 15, 1.0), 0.0) * 100;
                 w4.tone(.{.start = 320}, .{.sustain = 4}, @floatToInt(u32, volume), .{.channel = .noise});
             }
         }
