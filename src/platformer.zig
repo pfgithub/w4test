@@ -250,6 +250,15 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         }
     }
 
+    if((-state.player.pos[w4.y] < 209 and state.player.pos[w4.x] > 170) or -state.player.pos[w4.y] < 147) {
+        if(pointWithin(pos, .{44, 147}, .{170, 245})) {
+            return 0b00;
+        }
+        if(pointWithin(pos, .{142, 209}, .{265, 314})) {
+            return 0b00;
+        }
+    }
+
     return res;
 }
 
