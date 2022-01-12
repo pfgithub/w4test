@@ -633,7 +633,7 @@ export fn update() void {
             state.player.vel_gravity = Vec2f{0, 0};
             if(state.player.disallow_noise == 0) {
                 w4.tone(.{.start = 330, .end = 460}, .{.release = 18}, 41, .{.channel = .noise});
-                state.player.disallow_noise = 15;
+                state.player.disallow_noise = 10;
             }
         }
     }
