@@ -628,6 +628,13 @@ export fn update() void {
 
     w4.DRAW_COLORS.* = 0x22;
 
+    const camera_pos = Vec2f{80, 80};
+    // const camera_pos = Vec2f{50, 130};
+    const camera_posi = w4.Vec2{
+        @floatToInt(i32, camera_pos[w4.x]),
+        @floatToInt(i32, camera_pos[w4.y]),
+    };
+
     // w4.ctx.shader(|x, y| {})
     for(w4.range(160)) |_, y_usz| {
         const y = @intToFloat(f32, y_usz);
@@ -635,24 +642,24 @@ export fn update() void {
             const x = @intToFloat(f32, x_usz);
 
             var pos_screen = w4.Vec2{@intCast(i32, x_usz), @intCast(i32, y_usz)};
-            var pos_world = Vec2f{x, y} / world_scale - (state.player.pos * Vec2f{-1, 1}) - Vec2f{80, 80} / world_scale;
+            var pos_world = Vec2f{x, y} / world_scale - (state.player.pos * Vec2f{-1, 1}) - camera_pos / world_scale;
             var pixel = getScreenPixel(pos_world);
 
             w4.ctx.set(pos_screen, pixel);
         }
     }
 
-    const player_center = w4.Vec2{80, 80} + @divTrunc(state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1}, w4.Vec2{2, 2});
+    const player_center = camera_posi + @divTrunc(state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1}, w4.Vec2{2, 2});
     const dash_color = w4.ctx.get(player_center) == 0b10;
 
     w4.ctx.rect(
-        w4.Vec2{80, 80},
+        camera_posi,
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
         0b01,
     );
     if(state.player.dash_used) {
         w4.ctx.rect(
-            w4.Vec2{80, 80} + w4.Vec2{2, 2},
+            camera_posi + w4.Vec2{2, 2},
             state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1} - w4.Vec2{4, 4},
             if(dash_color) 0b11 else 0b10,
         );
