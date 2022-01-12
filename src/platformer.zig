@@ -183,6 +183,9 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     if(state.door_1_unlocked and res == 0b00 and pointWithin(pos, .{420, 361}, .{427, 383})) {
         return 0b10;
     }
+    if(state.dash_unlocked and pointWithin(pos, .{755, 630}, .{765, 640})) {
+        return 0b10;
+    }
 
     return res;
 }
@@ -351,6 +354,18 @@ fn updateWorld() void {
         );
     }
 
+    if(playerTouching(.{755, 642}, .{765, 642})) {
+        if(state.dash_unlocked) {
+            showNote("Dash unlocked! Jump and then", "press C and arrow keys to dash.");
+        }else{
+            showNote("Ability", "Press ↓ to unlock.");
+            if(use_key_this_frame) {
+                state.dash_unlocked = true;
+                successSound();
+            }
+        }
+    }
+
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
             state.farm_0_coins += 1;
@@ -407,13 +422,20 @@ fn autoDoor(purchased: *bool, price: f32, msg1: []const u8, msg2: []const u8) vo
                 w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
                 state.player.disallow_noise = 90;
             }else{
-                // play failure sound
-                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+                failureSound();
             }
         }
 
         showNote(msg1, msg2);
     }
+}
+
+fn successSound() void {
+    // success sound
+    w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+}
+fn failureSound() void {
+    w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
 }
 
 fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, msg2: []const u8, label: []const u8) void {
@@ -428,11 +450,9 @@ fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, ms
             coins.* = 0;
             state.clicks += c;
             if(c == 0) {
-                // failure sound
-                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+                failureSound();
             }else{
-                // success sound
-                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+                successSound();
             }
         }
     }else{
@@ -441,11 +461,9 @@ fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, ms
                 state.clicks -= price;
                 purchased.* = true;
 
-                // success sound
-                w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
+                successSound();
             }else{
-                // failure sound
-                w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
+                failureSound();
             }
         }
         showNote(msg1, msg2);
@@ -583,19 +601,18 @@ export fn update() void {
         }
     }
 
-    const player_color: u3 = if(state.player.dash_used) 2 else 1;
-    w4.ctx.blit(
+    w4.ctx.rect(
         w4.Vec2{80, 80},
-        levels[0].tex(),
-        .{0, 0},
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
-        .{
-            player_color,
-            player_color,
-            player_color,
-            player_color,
-        }, .{1, 1},
+        0b01,
     );
+    if(state.player.dash_used) {
+        w4.ctx.rect(
+            w4.Vec2{80, 80} + w4.Vec2{2, 2},
+            state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1} - w4.Vec2{4, 4},
+            0b10,
+        );
+    }
 
     {
         const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
@@ -680,6 +697,7 @@ fn measureChar(char: u21) i32 {
         '.' => 1,
         ':' => 1,
         '(', ')' => 2,
+        '!' => 1,
         else => 3,
     };
 }
@@ -696,6 +714,7 @@ fn getCharPos(char: u21) CharPos {
         '/' => return .{4, 3},
         '(' => return .{5, 3},
         ')' => return .{6, 3},
+        '!' => return .{7, 3},
         else => return .{3, 3},
     }
 }
