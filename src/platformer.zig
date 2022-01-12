@@ -311,7 +311,7 @@ fn updateWorld() void {
     }
     if(playerTouching(.{839, 418}, .{878, 437})) {
         const mix = @maximum(@minimum((state.player.pos[w4.x] - 839) / 7, 1.0), 0.0);
-        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[6], mix);
+        w4.PALETTE.* = themeMix(w4.PALETTE.*, color_themes[7], mix);
     }
  
     if(playerTouching(.{39, 84}, .{45, 91})) {
@@ -1031,10 +1031,10 @@ const color_themes = [_][4]u32{
     .{ 0x211e20, 0x555568, 0xa0a08b, 0xe9efec }, //     demichrome
     .{ 0x46425e, 0x5b768d, 0x899196, 0x86d993 }, // [!] blueish cave [next cave]
     .{ 0x280b0b, 0x6c2e53, 0xd17c7c, 0xf6c6a8 }, // [!] reds [intro cave]
-
     .{ 0x7c3f58, 0xeb6b6f, 0xf9a875, 0xfff6d3 }, //     ice cream gb
     .{ 0x4e3f2a, 0x605444, 0x887b6a, 0xaea691 }, // [!] beige [outside]
     .{ 0x332c50, 0x46878f, 0x94e344, 0xe2f3e4 }, // [!] greens [collect click] [farmhouse]
+    .{ 0x332c50, 0x46878f, 0xe2f3e4, 0x94e344 }, // [!] greens cave ver [mine]
     .{ 0x2d1b00, 0x1e606e, 0x5ab9a8, 0xc4f0c2 }, //     blues
     .{ 0x071821, 0x306850, 0x86c06c, 0xe0f8cf }, //     w4 default
     .{ 0x002b59, 0x005f8c, 0x00b9be, 0x9ff4e5 }, //     aqua
