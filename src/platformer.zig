@@ -375,7 +375,7 @@ fn updateWorld() void {
         }
     }
 
-    if(rain_volume > 10) {
+    if(rain_volume > 10 and state.player.disallow_noise < 4) {
         const rain_pitch = @floatToInt(u16, (1 - (@intToFloat(f32, rain_volume) / 100)) * 20 + 150);// 150 to 170
         w4.tone(.{.start = rain_pitch}, .{.sustain = 4}, rain_volume, .{.channel = .noise}); // rain
         state.player.disallow_noise = 4;
