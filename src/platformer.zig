@@ -627,6 +627,9 @@ export fn update() void {
         }
     }
 
+    const player_center = w4.Vec2{80, 80} + @divTrunc(state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1}, w4.Vec2{2, 2});
+    const dash_color = w4.ctx.get(player_center) == 0b10;
+
     w4.ctx.rect(
         w4.Vec2{80, 80},
         state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
@@ -636,9 +639,23 @@ export fn update() void {
         w4.ctx.rect(
             w4.Vec2{80, 80} + w4.Vec2{2, 2},
             state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1} - w4.Vec2{4, 4},
-            0b10,
+            if(dash_color) 0b11 else 0b10,
         );
     }
+    const dash_vel_f = state.player.vel_dash * Vec2f{8, -8};
+    const dash_vel = w4.Vec2{
+        @floatToInt(i32, dash_vel_f[w4.x]),
+        @floatToInt(i32, dash_vel_f[w4.y]),
+    };
+    if(dash_color) {
+        w4.DRAW_COLORS.* = 0x44;
+    }else{
+        w4.DRAW_COLORS.* = 0x33;
+    }
+    if(state.dash_unlocked) w4.line(
+        player_center,
+        player_center + dash_vel,
+    );
 
     {
         const numbox_ur = w4.Vec2{160 - 2, 0 + 2};
