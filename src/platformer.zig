@@ -414,6 +414,13 @@ fn updateWorld() void {
         }
     }
 
+    if(playerTouching(.{373, 1248}, .{379, 1248})) {
+        showNote("Return to surface", "Press ↓ to teleport.");
+        if(use_key_this_frame) {
+            state.player.pos = .{51, -349};
+        }
+    }
+
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
             state.farm_0_coins += 1;
@@ -568,19 +575,19 @@ export fn update() void {
             flying = true;
         }
         if(w4.GAMEPAD2.button_left) {
-            state.player.pos[w4.x] -= 2 / world_scale[w4.x];
+            state.player.pos[w4.x] -= 4 / world_scale[w4.x];
             flying = true;
         }
         if(w4.GAMEPAD2.button_right) {
-            state.player.pos[w4.x] += 2 / world_scale[w4.x];
+            state.player.pos[w4.x] += 4 / world_scale[w4.x];
             flying = true;
         }
         if(w4.GAMEPAD2.button_up) {
-            state.player.pos[w4.y] += 2 / world_scale[w4.y];
+            state.player.pos[w4.y] += 4 / world_scale[w4.y];
             flying = true;
         }
         if(w4.GAMEPAD2.button_down) {
-            state.player.pos[w4.y] -= 2 / world_scale[w4.y];
+            state.player.pos[w4.y] -= 4 / world_scale[w4.y];
             flying = true;
         }
     }
