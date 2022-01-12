@@ -741,6 +741,7 @@ fn measureChar(char: u21) i32 {
         ':' => 1,
         '(', ')' => 2,
         '!' => 1,
+        ',' => 1,
         else => 3,
     };
 }
@@ -758,6 +759,7 @@ fn getCharPos(char: u21) CharPos {
         '(' => return .{5, 3},
         ')' => return .{6, 3},
         '!' => return .{7, 3},
+        ',' => return .{8, 3},
         else => return .{3, 3},
     }
 }
