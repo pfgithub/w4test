@@ -44,8 +44,8 @@ const dev_mode = switch(@import("builtin").mode) {
 
 var arena: ?std.mem.Allocator = null;
 
-const chunk_size = 80;
-const chunk_count = 20;
+const chunk_size = 100;
+const chunk_count = 16;
 const levels_raw = @embedFile("platformer.w4i");
 const levels_indices_count = chunk_count * chunk_count + 1;
 const levels_indices_u8 = levels_raw[0..levels_indices_count * @sizeOf(u32)];
@@ -56,15 +56,13 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-const LevelTex = img.decompressionData(w4.Vec2{80, 80});
+const LevelTex = img.decompressionData(w4.Vec2{chunk_size, chunk_size});
 var levels: [4]LevelTex = .{
     .{},
     .{},
     .{},
     .{},
 };
-// TODO: this takes up like 51kb in memory… that's most of the memory…
-// since we're doing 2x zoom, consider using 80x80 rather than 160x160
 var level_ul: *LevelTex = undefined;
 var level_ur: *LevelTex = undefined;
 var level_bl: *LevelTex = undefined;
@@ -133,19 +131,21 @@ fn updateLoaded() void {
 
     var changed = false;
 
-    while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + chunk_size + (chunk_size / 2) and level_ul_x < chunk_count - 2) {
+    const breathing_room = 50;
+
+    while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + chunk_size + (chunk_size - breathing_room) and level_ul_x < chunk_count - 2) {
         level_ul_x += 1;
         changed = true;
     }
-    while(player_pos_idx[w4.x] < ulLevelFloat()[w4.x] + (chunk_size / 2) and level_ul_x > 0) {
+    while(player_pos_idx[w4.x] < ulLevelFloat()[w4.x] + breathing_room and level_ul_x > 0) {
         level_ul_x -= 1;
         changed = true;
     }
-    while(player_pos_idx[w4.y] > ulLevelFloat()[w4.y] + chunk_size + (chunk_size / 2) and level_ul_y < chunk_count - 2) {
+    while(player_pos_idx[w4.y] > ulLevelFloat()[w4.y] + chunk_size + (chunk_size - breathing_room) and level_ul_y < chunk_count - 2) {
         level_ul_y += 1;
         changed = true;
     }
-    while(player_pos_idx[w4.y] < ulLevelFloat()[w4.y] + (chunk_size / 2) and level_ul_y > 0) {
+    while(player_pos_idx[w4.y] < ulLevelFloat()[w4.y] + breathing_room and level_ul_y > 0) {
         level_ul_y -= 1;
         changed = true;
     }
@@ -637,7 +637,10 @@ export fn update() void {
 
     w4.DRAW_COLORS.* = 0x22;
 
-    const camera_pos = Vec2f{80, 80};
+    const camera_pos = Vec2f{80 - 3, 80 - 3};
+
+    // camera pos can be offset by a bit but at most like (80 - 50)px in any direction
+
     // const camera_pos = Vec2f{50, 130};
     const camera_posi = w4.Vec2{
         @floatToInt(i32, camera_pos[w4.x]),

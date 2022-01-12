@@ -8,7 +8,7 @@ pub fn build(b: *std.build.Builder) void {
     const imgconv_artifact = b.addInstallArtifact(imgconv);
 
     const platformer_image = b.addSystemCommand(&.{
-        "zig-out/bin/imgconv", "src/platformer.png", "src/platformer.w4i", "--splitby=20x20-80x80", "--compress",
+        "zig-out/bin/imgconv", "src/platformer.png", "src/platformer.w4i", "--splitby=16x16-100x100", "--compress",
     });
     platformer_image.step.dependOn(&imgconv_artifact.step);
 

@@ -320,6 +320,9 @@ pub fn processSubimage(
     return compressed;
 }
 
+const sb_t = 16;
+const sb_s = 100;
+
 pub fn main() !void {
     var arena_allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena_allocator.deinit();
@@ -330,13 +333,13 @@ pub fn main() !void {
 
     var src_file: ?[:0]const u8 = null;
     var dest_file: ?[:0]const u8 = null;
-    var sb20x20_80x80 = false;
+    var sb16x16_100x100 = false;
     var compress = false;
 
     for(args[1..]) |arg| {
         if(std.mem.startsWith(u8, arg, "-")) {
-            if(std.mem.eql(u8, arg, "--splitby=20x20-80x80")) {
-                sb20x20_80x80 = true;
+            if(std.mem.eql(u8, arg, "--splitby=16x16-100x100")) {
+                sb16x16_100x100 = true;
             }else if(std.mem.eql(u8, arg, "--compress")) {
                 compress = true;
             }else{
@@ -383,11 +386,11 @@ pub fn main() !void {
         @intCast(i32, h),
     };
 
-    if(sb20x20_80x80) {
+    if(sb16x16_100x100) {
         var items = std.ArrayList([]const u8).init(alloc);
-        for(range(20)) |_, y_block| {
-            for(range(20)) |_, x_block| {
-                try items.append(try processSubimage(alloc, image_data, x_block * 80, y_block * 80, 80, 80, total_size, .{.compress = compress}));
+        for(range(sb_t)) |_, y_block| {
+            for(range(sb_t)) |_, x_block| {
+                try items.append(try processSubimage(alloc, image_data, x_block * sb_s, y_block * sb_s, sb_s, sb_s, total_size, .{.compress = compress}));
             }
         }
         var index: u32 = 0;
