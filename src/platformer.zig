@@ -131,7 +131,7 @@ fn updateLoaded() void {
 
     var changed = false;
 
-    const breathing_room = 50;
+    const breathing_room = 40;
 
     while(player_pos_idx[w4.x] > ulLevelFloat()[w4.x] + chunk_size + (chunk_size - breathing_room) and level_ul_x < chunk_count - 2) {
         level_ul_x += 1;
@@ -152,6 +152,7 @@ fn updateLoaded() void {
 
     if(changed) {
         reloadLevels();
+        w4.trace("loaded.");
     }
 }
 
