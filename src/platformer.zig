@@ -315,31 +315,10 @@ fn updateWorld() void {
     }
  
     if(playerTouching(.{39, 84}, .{45, 91})) {
-        w4.PALETTE.* = themeMix(
-            w4.PALETTE.*,
-            color_themes[6],
-            1 - @minimum(@intToFloat(f32, state.region_frame_timer) / 16, 1),
-        );
-        if(state.region_frame_timer == 0) {
-            // playEffect(flashColor(color_themes[6], 16))
-            // playEffect(circles);
-            state.clicks += 1;
-            // playSound();
-
-            // if we want to be fancy we could even make a little tune of frequencies
-            // and have it play them in order
-            // playTune(&[_]Note{ … })
-            w4.tone(.{.start = 900}, .{.release = 16}, 100, .{.channel = .triangle});
-        }
-        incrFrameTimer();
+        autoClickArea(1);
     }
     if(playerTouching(.{755, 315}, .{775, 321})) {
-        w4.PALETTE.* = color_themes[6];
-        if(state.region_frame_timer == 0) {
-            state.clicks += 10;
-            w4.tone(.{.start = 900}, .{.release = 16}, 100, .{.channel = .triangle});
-        }
-        incrFrameTimer();
+        autoClickArea(10);
     }
 
     if(playerTouching(.{124, 100}, .{130, 100})) {
@@ -394,6 +373,26 @@ fn updateWorld() void {
     //     state.door_0_unlocked = true;
     //     state.clicks -= 10;
     // }
+}
+
+fn autoClickArea(clicks: f32) void {
+    w4.PALETTE.* = themeMix(
+        w4.PALETTE.*,
+        color_themes[6],
+        1 - @minimum(@intToFloat(f32, state.region_frame_timer) / 16, 1),
+    );
+    if(state.region_frame_timer == 0) {
+        // playEffect(flashColor(color_themes[6], 16))
+        // playEffect(circles);
+        state.clicks += clicks;
+        // playSound();
+
+        // if we want to be fancy we could even make a little tune of frequencies
+        // and have it play them in order
+        // playTune(&[_]Note{ … })
+        w4.tone(.{.start = 900}, .{.release = 16}, 100, .{.channel = .triangle});
+    }
+    incrFrameTimer();
 }
 
 fn autoDoor(purchased: *bool, price: f32, msg1: []const u8, msg2: []const u8) void {
@@ -969,6 +968,10 @@ const Player = struct {
             }
         }else{
             player.vel_instant_prev[w4.x] *= 0.8;
+            if(-player.vel_gravity[w4.y] > 5 and player.disallow_noise == 0) {
+                const volume = @maximum(@minimum((-player.vel_gravity[w4.y] - 5) / 30, 1.0), 0.0) * 50;
+                w4.tone(.{.start = 320}, .{.sustain = 4}, @floatToInt(u32, volume), .{.channel = .noise});
+            }
         }
         player.vel_dash *= @splat(2, @as(f32, 0.9));
         if(magnitude(player.vel_dash) < 0.3) player.vel_gravity[w4.y] -= 0.20;
