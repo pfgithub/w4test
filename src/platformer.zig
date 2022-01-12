@@ -365,6 +365,12 @@ fn updateWorld() void {
             "Your mine (2¢/10s)",
         );
     }
+    if(playerTouching(.{997, 180}, .{1001, 180})) {
+        autoFarmPlate(&state.farm_2_purchased, &state.farm_2_coins,
+            100, "Purchase windmill: 100¢", "↓. Produces 3¢ per 10s",
+            "Your windmill (3¢/10s)",
+        );
+    }
 
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
@@ -372,6 +378,9 @@ fn updateWorld() void {
         }
         if(state.farm_1_purchased) {
             state.farm_1_coins += 2;
+        }
+        if(state.farm_2_purchased) {
+            state.farm_2_coins += 3;
         }
     }
 
@@ -1022,6 +1031,8 @@ const State = struct {
     farm_0_coins: f32 = 0,
     farm_1_purchased: bool = false,
     farm_1_coins: f32 = 0,
+    farm_2_purchased: bool = false,
+    farm_2_coins: f32 = 0,
 };
 
 const color_themes = [_][4]u32{
