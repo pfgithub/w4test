@@ -219,6 +219,9 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
     if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
         return 0b11;
     }
+    if(!state.door_0_unlocked and pos[w4.x] > 145) {
+        return 0b00;
+    }
     if(state.door_1_unlocked and pointWithin(pos, .{437, 383}, .{441, 383})) {
         return 0b10;
     }
@@ -1125,7 +1128,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
