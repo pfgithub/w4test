@@ -421,6 +421,7 @@ fn updateWorld() void {
         showNote("Return to surface", "Press ↓ to teleport.");
         if(use_key_this_frame) {
             state.player.pos = .{51, -349};
+            importantSound();
         }
     }
 
@@ -480,8 +481,7 @@ fn autoDoor(purchased: *bool, price: f32, msg1: []const u8, msg2: []const u8) vo
                 flashColor(w4.PALETTE.*, 5);
                 // playSound([_]Tone{});
                 // w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50}); // happy sounding
-                w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
-                state.player.disallow_noise = 90;
+                importantSound();
             }else{
                 failureSound();
             }
@@ -491,6 +491,10 @@ fn autoDoor(purchased: *bool, price: f32, msg1: []const u8, msg2: []const u8) vo
     }
 }
 
+fn importantSound() void {
+    w4.tone(.{.start = 180}, .{.release = 90}, 100, .{.channel = .noise}); // echoey cave
+    state.player.disallow_noise = 50;
+}
 fn successSound() void {
     // success sound
     w4.tone(.{.start = 200}, .{.release = 20}, 54, .{.channel = .pulse1, .mode = .p50});
