@@ -662,6 +662,7 @@ export fn update() void {
     state.player.disallow_noise -|= 1;
     if(!flying) state.player.update();
     updateWorld();
+    updateLoaded();
 
     w4.DRAW_COLORS.* = 0x22;
 
