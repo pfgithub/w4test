@@ -418,6 +418,7 @@ fn updateWorld() void {
     }
 
     if(playerTouching(.{373, 1248}, .{379, 1248})) {
+        // showNote("Yuo died of fall damage :(", "That's the end. ↓ to return to surface.");
         showNote("Return to surface", "Press ↓ to teleport.");
         if(use_key_this_frame) {
             state.player.pos = .{51, -349};
