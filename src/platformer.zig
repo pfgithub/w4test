@@ -361,7 +361,15 @@ fn updateWorld() void {
     }else if(playerTouching(.{44, 147}, .{153, 359}) or playerTouching(.{153, 147}, .{170, 209})) {
         w4.PALETTE.* = color_themes[10];
     }
- 
+
+    if(playerTouching(.{0, 359}, .{316, 801})) {
+        const mix = scale(359, 801, -state.player.pos[w4.y], 0.0, 1.0, .constrain);
+        w4.PALETTE.* = themeMix(color_themes[10], color_themes[13], mix);
+    }
+    if(-state.player.pos[w4.y] >= 801) {
+        w4.PALETTE.* = color_themes[13];
+    }
+
     if(playerTouching(.{39, 84}, .{45, 91})) {
         autoClickArea(1);
     }
@@ -684,11 +692,31 @@ export fn update() void {
     const player_center = camera_posi + @divTrunc(state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1}, w4.Vec2{2, 2});
     const dash_color = w4.ctx.get(player_center) == 0b10;
 
-    w4.ctx.rect(
-        camera_posi,
-        state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
-        0b01,
-    );
+    if(false) {
+        const anim_v = @intToFloat(f32, state.frame % 10000) / 5.0;
+        const anim_frame = @floatToInt(i32, @floor(@mod(anim_v, 4)));
+        const anim_cycle = @floatToInt(i32, @mod(@divFloor(anim_v, 4), 4));
+
+        w4.ctx.rect(
+            camera_posi + w4.Vec2{1, 1},
+            w4.Vec2{5, 5},
+            0b10,
+        );
+        w4.ctx.blit(
+            camera_posi,
+            ui_texture,
+            .{45 + anim_frame * 7, 43 + anim_cycle * 7},
+            .{7, 7},
+            .{0b00, 0b01, 4, 0b11},
+            .{1, 1},
+        );
+    }else{
+        w4.ctx.rect(
+            camera_posi,
+            state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
+            0b01,
+        );
+    }
     if(state.player.dash_used) {
         w4.ctx.rect(
             camera_posi + w4.Vec2{2, 2},
