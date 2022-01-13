@@ -803,6 +803,41 @@ export fn update() void {
     // }
 }
 
+const Ball = struct {
+    angle: f32, // 0..2π
+    vel: Vec2f,
+    pos: Vec2f,
+    angular_vel: f32,
+
+    fn addVel(ball: *@This(), v: Vec2f) void {
+        ball.vel += v;
+    }
+    fn step(ball: *@This(), steps: f32) void {
+        const vel_step = ball.vel / @splat(2, steps);
+        const angular_vel_step = ball.angular_vel / @splat(2, steps);
+
+        ball.pos += vel_step;
+        if(ball.colliding()) {
+            ball.pos -= vel_step;
+            // apply force
+
+        }
+        ball.angle += angular_vel_step;
+    }
+    fn update(ball: *@This()) void {
+        const steps = @floatToInt(usize, @ceil(@maximum(
+            std.math.fabs(ball.pos[w4.x]),
+            std.math.fabs(ball.pos[w4.y]),
+        ) * 4));
+        for(w4.range(steps)) |_| {
+            ball.step(@intToFloat(f32, steps));
+        }
+
+        // add gravity
+        ball.vel[w4.y] -= 0.1;
+    }
+};
+
 fn measureText(text: []const u8) i32 {
     var res: i32 = 0;
 
