@@ -764,6 +764,8 @@ export fn update() void {
         );
     }
 
+    // std.mem.copy(u8, w4.FRAMEBUFFER, std.mem.asBytes(&state));
+
     // for(w4.range(160)) |_, y| {
     //     for(w4.range(160)) |_, x| {
     //         if(x % 2 == y % 2) {
