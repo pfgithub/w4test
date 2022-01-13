@@ -152,7 +152,7 @@ fn updateLoaded() void {
 
     if(changed) {
         reloadLevels();
-        // w4.trace("loaded.");
+        // w4.trace("loaded. {d}x{d}", .{level_ul_x, level_ul_y});
     }
 }
 
