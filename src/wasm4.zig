@@ -1,96 +1,93 @@
-//
-// WASM-4: https://wasm4.org/docs
+const w4 = @This();
+const std = @import("std");
 
+/// PLATFORM CONSTANTS
+pub const CANVAS_SIZE = 160;
+
+/// Helpers
 pub const Vec2 = @import("std").meta.Vector(2, i32);
 pub const x = 0;
 pub const y = 1;
 
-// ┌───────────────────────────────────────────────────────────────────────────┐
-// │                                                                           │
-// │ Platform Constants                                                        │
-// │                                                                           │
-// └───────────────────────────────────────────────────────────────────────────┘
+pub fn texLen(size: Vec2) usize {
+    return @intCast(usize, std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable);
+}
 
-pub const CANVAS_SIZE = 160;
+pub const Mbl = enum { mut, cons };
+pub fn Tex(comptime mbl: Mbl) type {
+    return struct {
+        // oh that's really annoying…
+        // ideally there would be a way to have a readonly Tex and a mutable Tex
+        // and the mutable should implicit cast to readonly
+        data: switch (mbl) {
+            .mut => [*]u8,
+            .cons => [*]const u8,
+        },
+        size: Vec2,
 
-// Helpers
-
-const w4 = @This();
-const std = @import("std");
-
-pub const Mbl = enum{mut, cons};
-pub fn Tex(comptime mbl: Mbl) type {return struct {
-    // oh that's really annoying…
-    // ideally there would be a way to have a readonly Tex and a mutable Tex
-    // and the mutable should implicit cast to readonly
-    data: switch(mbl) {
-        .mut => [*]u8,
-        .cons => [*]const u8,
-    },
-    size: Vec2,
-
-    pub fn wrapSlice(slice: switch(mbl) {
-        .mut => []u8,
-        .cons => []const u8,
-    }, size: Vec2) Tex(mbl) {
-        if(slice.len != std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable) {
-            unreachable;
+        pub fn wrapSlice(slice: switch (mbl) {
+            .mut => []u8,
+            .cons => []const u8,
+        }, size: Vec2) Tex(mbl) {
+            if (slice.len != texLen(size)) {
+                unreachable;
+            }
+            return .{
+                .data = slice.ptr,
+                .size = size,
+            };
         }
-        return .{
-            .data = slice.ptr,
-            .size = size,
-        };
-    }
 
-    pub fn cons(tex: Tex(.mut)) Tex(.cons) {
-        return .{
-            .data = tex.data,
-            .size = tex.size,
-        };
-    }
+        pub fn cons(tex: Tex(.mut)) Tex(.cons) {
+            return .{
+                .data = tex.data,
+                .size = tex.size,
+            };
+        }
 
-    pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
-        for(range(@intCast(usize, src_wh[y]))) |_, y_usz| {
-            const yp = @intCast(i32, y_usz);
-            for(range(@intCast(usize, src_wh[x]))) |_, x_usz| {
-                const xp = @intCast(i32, x_usz);
-                const pos = Vec2{xp, yp};
+        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
+            for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
+                const yp = @intCast(i32, y_usz);
+                for (range(@intCast(usize, src_wh[x]))) |_, x_usz| {
+                    const xp = @intCast(i32, x_usz);
+                    const pos = Vec2{ xp, yp };
 
-                const value = remap_colors[src.get(src_ul + pos)];
-                if(value <= std.math.maxInt(u2)) { 
-                    dest.rect(pos * scale + dest_ul, scale, @intCast(u2, value));
+                    const value = remap_colors[src.get(src_ul + pos)];
+                    if (value <= std.math.maxInt(u2)) {
+                        dest.rect(pos * scale + dest_ul, scale, @intCast(u2, value));
+                    }
                 }
             }
         }
-    }
-    pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: u2) void {
-        for(range(std.math.lossyCast(usize, wh[y]))) |_, y_usz| {
-            const yp = @intCast(i32, y_usz);
-            for(range(std.math.lossyCast(usize, wh[x]))) |_, x_usz| {
-                const xp = @intCast(i32, x_usz);
+        pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: u2) void {
+            for (range(std.math.lossyCast(usize, wh[y]))) |_, y_usz| {
+                const yp = @intCast(i32, y_usz);
+                for (range(std.math.lossyCast(usize, wh[x]))) |_, x_usz| {
+                    const xp = @intCast(i32, x_usz);
 
-                dest.set(ul + Vec2{xp, yp}, color);
+                    dest.set(ul + Vec2{ xp, yp }, color);
+                }
             }
         }
-    }
-    pub fn get(tex: Tex(mbl), pos: Vec2) u2 {
-        if(@reduce(.Or, pos < w4.Vec2{0, 0})) return 0;
-        if(@reduce(.Or, pos >= tex.size)) return 0;
-        const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
-        const index = @intCast(usize, @divFloor(index_unscaled, 4));
-        const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
-        return @truncate(u2, tex.data[index] >> byte_idx);
-    }
-    pub fn set(tex: Tex(.mut), pos: Vec2, value: u2) void {
-        if(@reduce(.Or, pos < w4.Vec2{0, 0})) return;
-        if(@reduce(.Or, pos >= tex.size)) return;
-        const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
-        const index = @intCast(usize, @divFloor(index_unscaled, 4));
-        const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
-        tex.data[index] &= ~(@as(u8, 0b11) << byte_idx);
-        tex.data[index] |= @as(u8, value) << byte_idx;
-    }
-};}
+        pub fn get(tex: Tex(mbl), pos: Vec2) u2 {
+            if (@reduce(.Or, pos < w4.Vec2{ 0, 0 })) return 0;
+            if (@reduce(.Or, pos >= tex.size)) return 0;
+            const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
+            const index = @intCast(usize, @divFloor(index_unscaled, 4));
+            const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+            return @truncate(u2, tex.data[index] >> byte_idx);
+        }
+        pub fn set(tex: Tex(.mut), pos: Vec2, value: u2) void {
+            if (@reduce(.Or, pos < w4.Vec2{ 0, 0 })) return;
+            if (@reduce(.Or, pos >= tex.size)) return;
+            const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
+            const index = @intCast(usize, @divFloor(index_unscaled, 4));
+            const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
+            tex.data[index] &= ~(@as(u8, 0b11) << byte_idx);
+            tex.data[index] |= @as(u8, value) << byte_idx;
+        }
+    };
+}
 
 pub fn range(len: usize) []const void {
     return @as([*]const void, &[_]void{})[0..len];
@@ -116,7 +113,7 @@ pub const SYSTEM_FLAGS: *SystemFlags = @intToPtr(*SystemFlags, 0x1f);
 pub const FRAMEBUFFER: *[CANVAS_SIZE * CANVAS_SIZE / 4]u8 = @intToPtr(*[6400]u8, 0xA0);
 pub const ctx = Tex(.mut){
     .data = @intToPtr([*]u8, 0xA0), // apparently casting *[N]u8 to [*]u8 at comptime causes a compiler crash
-    .size = .{CANVAS_SIZE, CANVAS_SIZE},
+    .size = .{ CANVAS_SIZE, CANVAS_SIZE },
 };
 
 pub const Gamepad = packed struct {
@@ -128,16 +125,16 @@ pub const Gamepad = packed struct {
     button_up: bool,
     button_down: bool,
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
 
     pub fn format(value: @This(), comptime _: []const u8, _: @import("std").fmt.FormatOptions, writer: anytype) !void {
-        if(value.button_1) try writer.writeAll("1");
-        if(value.button_2) try writer.writeAll("2");
-        if(value.button_left) try writer.writeAll("<");//"←");
-        if(value.button_right) try writer.writeAll(">");
-        if(value.button_up) try writer.writeAll("^");
-        if(value.button_down) try writer.writeAll("v");
+        if (value.button_1) try writer.writeAll("1");
+        if (value.button_2) try writer.writeAll("2");
+        if (value.button_left) try writer.writeAll("<"); //"←");
+        if (value.button_right) try writer.writeAll(">");
+        if (value.button_up) try writer.writeAll("^");
+        if (value.button_down) try writer.writeAll("v");
     }
 };
 
@@ -146,10 +143,10 @@ pub const Mouse = packed struct {
     y: i16,
     buttons: MouseButtons,
     pub fn pos(mouse: Mouse) Vec2 {
-        return .{mouse.x, mouse.y};
+        return .{ mouse.x, mouse.y };
     }
     comptime {
-        if(@sizeOf(@This()) != 5) unreachable;
+        if (@sizeOf(@This()) != 5) unreachable;
     }
 };
 
@@ -159,7 +156,7 @@ pub const MouseButtons = packed struct {
     middle: bool,
     _: u5 = 0,
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
 };
 
@@ -168,7 +165,7 @@ pub const SystemFlags = packed struct {
     hide_gamepad_overlay: bool,
     _: u6 = 0,
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
 };
 
@@ -200,13 +197,13 @@ pub const externs = struct {
 
 /// Copies pixels to the framebuffer.
 pub fn blit(sprite: []const u8, pos: Vec2, size: Vec2, flags: BlitFlags) void {
-    if(sprite.len * 8 != size[x] * size[y]) unreachable;
+    if (sprite.len * 8 != size[x] * size[y]) unreachable;
     externs.blit(sprite.ptr, pos[x], pos[y], size[x], size[y], @bitCast(u32, flags));
 }
 
 /// Copies a subregion within a larger sprite atlas to the framebuffer.
 pub fn blitSub(sprite: []const u8, pos: Vec2, size: Vec2, src: Vec2, strie: i32, flags: BlitFlags) void {
-    if(sprite.len * 8 != size[x] * size[y]) unreachable;
+    if (sprite.len * 8 != size[x] * size[y]) unreachable;
     externs.blitSub(sprite.ptr, pos[x], pos[y], size[x], size[y], src[x], src[y], strie, @bitCast(u32, flags));
 }
 
@@ -220,7 +217,7 @@ pub const BlitFlags = packed struct {
     rotate: bool = false,
     _: u28 = 0,
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u32)) unreachable;
     }
 };
 
@@ -251,8 +248,6 @@ pub fn text(str: []const u8, pos: Vec2) void {
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /// Plays a sound tone.
-
-/// Plays a sound tone.
 pub fn tone(frequency: ToneFrequency, duration: ToneDuration, volume: u32, flags: ToneFlags) void {
     return externs.tone(@bitCast(u32, frequency), @bitCast(u32, duration), volume, @bitCast(u8, flags));
 }
@@ -261,7 +256,7 @@ pub const ToneFrequency = packed struct {
     end: u16 = 0,
 
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u32)) unreachable;
     }
 };
 
@@ -272,7 +267,7 @@ pub const ToneDuration = packed struct {
     attack: u8 = 0,
 
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u32)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u32)) unreachable;
     }
 };
 
@@ -295,7 +290,7 @@ pub const ToneFlags = packed struct {
     _: u4 = 0,
 
     comptime {
-        if(@sizeOf(@This()) != @sizeOf(u8)) unreachable;
+        if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }
 };
 
@@ -318,4 +313,17 @@ pub extern fn diskw(src: [*]const u8, size: u32) u32;
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /// Prints a message to the debug console.
-pub extern fn trace(x: [*:0]const u8) void;
+pub fn trace(msg: []const u8) void {
+    traceUtf8(msg.ptr, msg.len);
+}
+extern fn traceUtf8(str_ptr: [*]const u8, str_len: usize) void;
+
+/// Use with caution, as there's no compile-time type checking.
+///
+/// * %c, %d, and %x expect 32-bit integers.
+/// * %f expects 64-bit floats.
+/// * %s expects a *zero-terminated* string pointer.
+///
+/// See https://github.com/aduros/wasm4/issues/244 for discussion and type-safe
+/// alternatives.
+pub extern fn tracef(x: [*:0]const u8, ...) void;
