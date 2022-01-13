@@ -395,8 +395,8 @@ fn updateWorld() void {
 
     if(playerTouching(.{421, 201}, .{426, 201})) {
         autoFarmPlate(&state.farm_0_purchased, &state.farm_0_coins,
-            50, "Purchase farm: 50¢", "↓. Produces 1¢ per 10s",
-            "Your farm (1¢/10s)",
+            50, "Purchase farm: 50¢", "↓. Produces 2¢ per 10s",
+            "Your farm (2¢/10s)",
         );
     }
     if(playerTouching(.{848, 434}, .{852, 434})) {
@@ -441,7 +441,7 @@ fn updateWorld() void {
 
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
-            state.farm_0_coins += 1;
+            state.farm_0_coins += 2;
         }
         if(state.farm_1_purchased) {
             state.farm_1_coins += 2;
