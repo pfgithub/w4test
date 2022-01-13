@@ -85,6 +85,11 @@ fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
 }
 
 export fn start() void {
+    w4.SYSTEM_FLAGS.preserve_framebuffer = true;
+
+    if(test_program) {
+        return;
+    }
     // load all four levels (undefined is not good to have lying around)
 
     // then, just reload levels when the person gets near an edge
@@ -566,7 +571,23 @@ const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80
 
 var use_key_this_frame = false;
 
+const test_program = false;
+
 export fn update() void {
+    if(test_program) {
+        w4.ctx.set(.{80, 80}, w4.ctx.get(.{80, 80}) +% 1);
+        return; // nothing to do;
+    }
+
+    // NOTE:
+    // may end up fps limiting to 45fps after:
+    // - wasm4 is fixed to run at 60
+    // - or it turns out I'm already running at 60fps in which case nvm
+
+    // frame_u1 +%= 1;
+    // if(frame_u1 == 1) {
+    //     return; // nothing to do
+    // }
     // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
     // arena = fba.allocator();
     // defer arena = null;
