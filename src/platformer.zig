@@ -462,6 +462,18 @@ fn updateWorld() void {
     // showNote("You've reached the end of the game", "Press ↓ to unlock cheats")
     // showNote("Use ESDF keys to fly (gamepad2)", "Also you can dash infinite times now")
 
+    if(rain_volume > 10 and state.player.disallow_noise < 4) {
+        const rain_pitch = @floatToInt(u16, (1 - (@intToFloat(f32, rain_volume) / 100)) * 20 + 150);// 150 to 170
+        w4.tone(.{.start = rain_pitch}, .{.sustain = 4}, rain_volume, .{.channel = .noise}); // rain
+        state.player.disallow_noise = 4;
+    }
+
+    // if(state.clicks > 10 and !state.door_0_unlocked) {
+    //     state.door_0_unlocked = true;
+    //     state.clicks -= 10;
+    // }
+}
+fn updateFarms() void {
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
             state.farm_0_coins += 2;
@@ -479,17 +491,6 @@ fn updateWorld() void {
             state.farm_4_coins += 10;
         }
     }
-
-    if(rain_volume > 10 and state.player.disallow_noise < 4) {
-        const rain_pitch = @floatToInt(u16, (1 - (@intToFloat(f32, rain_volume) / 100)) * 20 + 150);// 150 to 170
-        w4.tone(.{.start = rain_pitch}, .{.sustain = 4}, rain_volume, .{.channel = .noise}); // rain
-        state.player.disallow_noise = 4;
-    }
-
-    // if(state.clicks > 10 and !state.door_0_unlocked) {
-    //     state.door_0_unlocked = true;
-    //     state.clicks -= 10;
-    // }
 }
 
 fn autoClickArea(clicks: f32) void {
@@ -593,124 +594,7 @@ fn flashColor(color: [4]u32, duration: u8) void {
     // TODO
 }
 
-const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
-
-var use_key_this_frame = false;
-
-const test_program = false;
-
-export fn update() void {
-    if(test_program) {
-        w4.ctx.set(.{80, 80}, w4.ctx.get(.{80, 80}) +% 1);
-        return; // nothing to do;
-    }
-
-    // NOTE:
-    // may end up fps limiting to 45fps after:
-    // - wasm4 is fixed to run at 60
-    // - or it turns out I'm already running at 60fps in which case nvm
-
-    // frame_u1 +%= 1;
-    // if(frame_u1 == 1) {
-    //     return; // nothing to do
-    // }
-    // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
-    // arena = fba.allocator();
-    // defer arena = null;
-
-    state = getState();
-    defer {
-        saveState(state);
-        state = undefined;
-    }
-    state.frame += 1;
-
-    use_key_this_frame = false;
-    show_note_this_frame = null;
-
-    updateLoaded();
-
-    var world_scale = Vec2f{2, 2};
-    var flying = false;
-    if(dev_mode) {
-        if(w4.GAMEPAD2.button_1) {
-            world_scale = Vec2f{1, 1};
-            flying = true;
-        }
-        if(w4.GAMEPAD2.button_left) {
-            state.player.pos[w4.x] -= 4 / world_scale[w4.x];
-            flying = true;
-        }
-        if(w4.GAMEPAD2.button_right) {
-            state.player.pos[w4.x] += 4 / world_scale[w4.x];
-            flying = true;
-        }
-        if(w4.GAMEPAD2.button_up) {
-            state.player.pos[w4.y] += 4 / world_scale[w4.y];
-            flying = true;
-        }
-        if(w4.GAMEPAD2.button_down) {
-            state.player.pos[w4.y] -= 4 / world_scale[w4.y];
-            flying = true;
-        }
-    }
-
-    if(w4.GAMEPAD1.button_down) {
-        if(!state.player.down_key_held) {
-            state.player.down_key_held = true;
-            use_key_this_frame = true;
-        }
-    }else{
-        state.player.down_key_held = false;
-    }
-    if(!w4.GAMEPAD1.button_2) {
-        dash_key_used = false;
-    }
-    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2 and !dash_key_used) {
-        var dir = Vec2f{0, 0};
-        if(w4.GAMEPAD1.button_left) {
-            dir[w4.x] -= 1;
-        }
-        if(w4.GAMEPAD1.button_right) {
-            dir[w4.x] += 1;
-        }
-        if(w4.GAMEPAD1.button_up) {
-            dir[w4.y] += 1;
-        }
-        if(w4.GAMEPAD1.button_down) {
-            use_key_this_frame = false;
-            dir[w4.y] -= 1;
-        }
-        if(dir[w4.x] != 0 or dir[w4.y] != 0) {
-            dash_key_used = true;
-            dir = normalize(dir);
-            state.player.dash_used = true;
-            state.player.vel_dash = dir * @splat(2, @as(f32, 2.2));
-            state.player.vel_gravity = Vec2f{0, 0};
-            if(state.player.disallow_noise == 0) {
-                w4.tone(.{.start = 330, .end = 460}, .{.release = 18}, 41, .{.channel = .noise});
-                state.player.disallow_noise = 10;
-            }
-        }
-    }
-    if(w4.GAMEPAD1.button_left) {
-        state.player.vel_instant += Vec2f{-1, 0};
-    }
-    if(w4.GAMEPAD1.button_right) {
-        state.player.vel_instant += Vec2f{1, 0};
-    }
-    if(!state.player.jump_used and (w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_1) and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
-        state.player.vel_gravity[w4.y] = 2.2;
-        state.player.on_ground = std.math.maxInt(u8);
-        state.player.jump_used = true;
-    }
-    if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
-
-    state.player.disallow_noise -|= 1;
-    if(!flying) state.player.update();
-    updateWorld();
-    updateLoaded();
-
+fn renderGame(world_scale: Vec2f) void {
     w4.DRAW_COLORS.* = 0x22;
 
     const camera_pos = Vec2f{80 - 3, 80 - 3};
@@ -838,6 +722,175 @@ export fn update() void {
             .{4, 10},
             0b01,
         );
+    }
+}
+
+fn handleGameKeys() Vec2f {
+    var world_scale = Vec2f{2, 2};
+    var flying = false;
+    if(dev_mode) {
+        if(w4.GAMEPAD2.button_1) {
+            world_scale = Vec2f{1, 1};
+            flying = true;
+        }
+        if(w4.GAMEPAD2.button_left) {
+            state.player.pos[w4.x] -= 4 / world_scale[w4.x];
+            flying = true;
+        }
+        if(w4.GAMEPAD2.button_right) {
+            state.player.pos[w4.x] += 4 / world_scale[w4.x];
+            flying = true;
+        }
+        if(w4.GAMEPAD2.button_up) {
+            state.player.pos[w4.y] += 4 / world_scale[w4.y];
+            flying = true;
+        }
+        if(w4.GAMEPAD2.button_down) {
+            state.player.pos[w4.y] -= 4 / world_scale[w4.y];
+            flying = true;
+        }
+    }
+
+    if(w4.GAMEPAD1.button_down) {
+        if(!state.player.down_key_held) {
+            state.player.down_key_held = true;
+            use_key_this_frame = true;
+        }
+    }else{
+        state.player.down_key_held = false;
+    }
+    if(!w4.GAMEPAD1.button_2) {
+        dash_key_used = false;
+    }
+    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2 and !dash_key_used) {
+        var dir = Vec2f{0, 0};
+        if(w4.GAMEPAD1.button_left) {
+            dir[w4.x] -= 1;
+        }
+        if(w4.GAMEPAD1.button_right) {
+            dir[w4.x] += 1;
+        }
+        if(w4.GAMEPAD1.button_up) {
+            dir[w4.y] += 1;
+        }
+        if(w4.GAMEPAD1.button_down) {
+            use_key_this_frame = false;
+            dir[w4.y] -= 1;
+        }
+        if(dir[w4.x] != 0 or dir[w4.y] != 0) {
+            dash_key_used = true;
+            dir = normalize(dir);
+            state.player.dash_used = true;
+            state.player.vel_dash = dir * @splat(2, @as(f32, 2.2));
+            state.player.vel_gravity = Vec2f{0, 0};
+            if(state.player.disallow_noise == 0) {
+                w4.tone(.{.start = 330, .end = 460}, .{.release = 18}, 41, .{.channel = .noise});
+                state.player.disallow_noise = 10;
+            }
+        }
+    }
+    if(w4.GAMEPAD1.button_left) {
+        state.player.vel_instant += Vec2f{-1, 0};
+    }
+    if(w4.GAMEPAD1.button_right) {
+        state.player.vel_instant += Vec2f{1, 0};
+    }
+    if(!state.player.jump_used and (w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_1) and state.player.on_ground <= 6 and magnitude(state.player.vel_dash) < 0.3) {
+        state.player.vel_gravity[w4.y] = 2.2;
+        state.player.on_ground = std.math.maxInt(u8);
+        state.player.jump_used = true;
+    }
+    if(!w4.GAMEPAD1.button_up) state.player.jump_used = false;
+
+    state.player.disallow_noise -|= 1;
+
+    if(!flying) state.player.update();
+
+    return world_scale;
+}
+
+const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
+
+var use_key_this_frame = false;
+
+const test_program = false;
+
+export fn update() void {
+    if(test_program) {
+        w4.ctx.set(.{80, 80}, w4.ctx.get(.{80, 80}) +% 1);
+        return; // nothing to do;
+    }
+
+    // NOTE:
+    // may end up fps limiting to 45fps after:
+    // - wasm4 is fixed to run at 60
+    // - or it turns out I'm already running at 60fps in which case nvm
+
+    // frame_u1 +%= 1;
+    // if(frame_u1 == 1) {
+    //     return; // nothing to do
+    // }
+    // var fba = std.heap.FixedBufferAllocator.init(&alloc_buffer);
+    // arena = fba.allocator();
+    // defer arena = null;
+
+    state = getState();
+    defer {
+        saveState(state);
+        state = undefined;
+    }
+    state.frame += 1;
+
+    use_key_this_frame = false;
+    show_note_this_frame = null;
+
+    updateFarms(); // happens even if you're in the computer
+    // technically we shouldn't even need to update them - should be able
+    // to calculate them if we just store the u64 frame they were last harvested at
+    // [!] should not happen while paused [ or maybe it should, not sure ]
+
+    if(dev_mode and w4.GAMEPAD2.button_2) {
+        // we'll make it so you can press r to bring up a pause menu while in game
+        state.game_screen = switch(state.game_screen) {
+            .computer => .platformer,
+            .platformer => .computer,
+        };
+    }
+
+    switch(state.game_screen) {
+        .computer => {
+            if(level_ul_x != 8 or level_ul_y != 8) {
+                level_ul_x = chunk_count - 2;
+                level_ul_y = chunk_count - 2;
+                reloadLevels();
+                // oh rather than manual reloadLevels we could probably
+                // just automtaically load whenever needed.
+                // if you zoom out too far it would mess up and start lagging though
+                // - maybe set a max load count of 4 each frame
+            }
+
+            w4.PALETTE.* = .{
+                0x4e5079,
+                0x656b9f,
+                0x9ca1d8,
+                0xc7caf3,
+            };
+
+            var x: i32 = 0;
+            while(x < w4.CANVAS_SIZE) : (x += 1) {
+                var y: i32 = 0;
+                while(y < w4.CANVAS_SIZE) : (y += 1) {
+                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + w4.Vec2{1440, 1440}));
+                }
+            }
+        },
+        .platformer => {
+            updateLoaded();
+            const world_scale = handleGameKeys();
+            updateWorld();
+            updateLoaded();
+            renderGame(world_scale);
+        },
     }
 
     // std.mem.copy(u8, w4.FRAMEBUFFER, std.mem.asBytes(&state));
@@ -1249,6 +1302,9 @@ const State = struct {
     const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
+
+    game_screen: GameScreen = .computer,
+
     player: Player = .{},
     // if the player is on a moving platform, don't control this with player_vel.
     // we need like a player_environment_vel or something.
@@ -1274,6 +1330,8 @@ const State = struct {
 };
 
 const GameScreen = enum{
+    // ok I think we should have a pause screen show up when you press R
+
     // we could have a mouse you can move around with arrow keys or mouse
     // and then from there you open clickergame.exe
     // - you start on a screen that's like a normal clicker. you click the thing
@@ -1291,7 +1349,7 @@ const GameScreen = enum{
     // not that many strings to translate, I just have to add in a few characters
     // to my character map
     computer,
-    game,
+    platformer,
 };
 
 const color_themes = [_][4]u32{
