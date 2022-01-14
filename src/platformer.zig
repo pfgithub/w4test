@@ -210,6 +210,9 @@ fn protectedFromRain(pos: w4.Vec2) bool {
     if(pos[w4.x] >= 597 and pos[w4.x] <= 623 and pos[w4.y] >= 192) {
         return true;
     }
+    if(pos[w4.x] >= 1111 and pos[w4.x] <= 1125 and pos[w4.y] >= 98) {
+        return true;
+    }
     return false;
 }
 
