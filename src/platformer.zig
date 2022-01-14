@@ -859,7 +859,7 @@ export fn update() void {
 
     switch(state.game_screen) {
         .computer => {
-            if(level_ul_x != 8 or level_ul_y != 8) {
+            if(level_ul_x != chunk_count - 2 or level_ul_y != chunk_count - 2) {
                 level_ul_x = chunk_count - 2;
                 level_ul_y = chunk_count - 2;
                 reloadLevels();
