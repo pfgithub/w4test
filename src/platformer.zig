@@ -192,6 +192,9 @@ fn getWorldPixel(pos: w4.Vec2) u2 {
     if(state.dash_unlocked and pointWithin(pos, .{755, 630}, .{765, 640})) {
         return 0b11;
     }
+    if(pos[w4.x] >= 158 and pos[w4.x] <= 1564 and pos[w4.y] < 0) {
+        return 0b11;
+    }
 
     return res;
 }
@@ -201,7 +204,7 @@ fn rand(seed: u64) u32 {
 }
 
 fn inRain(pos: w4.Vec2) bool {
-    return pointWithin(pos, .{188, 0}, .{1557, 209});
+    return pos[w4.x] >= 188 and pos[w4.x] <= 1557 and pos[w4.y] <= 209;
 }
 fn protectedFromRain(pos: w4.Vec2) bool {
     if(pos[w4.x] >= 411 and pos[w4.x] <= 441 and pos[w4.y] >= 186) {
@@ -243,8 +246,15 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         const point_rel = (pos_float - Vec2f{180, 0});
         const y_float = point_rel[w4.y] / (209 - 0);
 
-        var phase = @intToFloat(f32, state.frame % (60 * 60 * 60 * 24)) / 20.0;
+        const rain_speed = 20.0;
+        // const rain_speed = 200.0; // huh this shows that we're replacing drops
+        //    in the middle of their phase
 
+        var phase = @intToFloat(f32, state.frame % (60 * 60 * 60 * 24)) / rain_speed;
+
+        // if we need performance, do % 160 and cache this value in a
+        // [160]u12 array (we only need 0..3600 of the result) and we can use
+        // maxint to represent not defined this frame
         const randv = rand(@floatToInt(u64, point_rel[w4.x] * 2));
         const randw = @intToFloat(f32, (randv / 60) % 60) / 60.0;
         const val = @intToFloat(f32, randv % 60) / 60;
@@ -252,11 +262,11 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         phase += val;
 
         const shift = @divFloor(phase, 1.0);
-        phase += shift * randw;
+        phase += @mod(shift * randw, 1.0);
 
         phase = @mod(phase, 1.0);
 
-        if(y_float >= phase and y_float < phase + 0.1) {
+        if(@mod(y_float - phase, 1.0) <= 0.1) {
             // if(y_float < phase + 0.05) return 0b01;
             return 0b01;
         }
