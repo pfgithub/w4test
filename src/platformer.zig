@@ -890,7 +890,7 @@ export fn update() void {
                 }
             }
 
-            renderWindow(.{5, 5}, .{80, 80});
+            renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
         },
         .platformer => {
             updateLoaded();
@@ -912,8 +912,40 @@ export fn update() void {
     // }
 }
 
-fn renderWindow(ul: w4.Vec2, size: w4.Vec2) void {
-    w4.ctx.rect(ul, size, 0b00);
+fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
+    w4.ctx.rect(ul, br - ul, color);
+}
+fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
+    const x1 = ul[w4.x];
+    const y1 = ul[w4.y];
+    const x2 = br[w4.x];
+    const y2 = br[w4.y];
+
+    _ = y2;
+
+    // or just do the four corner thing where you blit
+    // parts of an image and repeat the middle section
+    // that might even use less memory than this
+    w4.ctx.set(.{x1 + 1, y1 + 1}, 0b00);
+    w4.ctx.set(.{x2 - 2, y1 + 1}, 0b00);
+    w4.ctx.set(.{x1 + 1, y2 - 2}, 0b00);
+    w4.ctx.set(.{x2 - 2, y2 - 2}, 0b00);
+    rectULBR(.{x1 + 2, y1}, .{x2 - 2, y1 + 1}, 0b00);
+    rectULBR(.{x1 + 2, y2 - 1}, .{x2 - 2, y2}, 0b00);
+    rectULBR(.{x1, y1 + 2}, .{x1 + 1, y2 - 2}, 0b00);
+    rectULBR(.{x2 - 1, y1 + 2}, .{x2, y2 - 2}, 0b00);
+
+    rectULBR(.{x1 + 2, y1 + 1}, .{x2 - 2, y1 + 2}, 0b11);
+    rectULBR(.{x1 + 2, y2 - 2}, .{x2 - 2, y2 - 1}, 0b01);
+    rectULBR(.{x1 + 1, y1 + 2}, .{x1 + 2, y2 - 2}, 0b01);
+    rectULBR(.{x2 - 2, y1 + 2}, .{x2 - 1, y2 - 2}, 0b01);
+
+    rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, 0b10);
+
+    drawText(w4.ctx, title, .{x1 + 3, y1 + 3}, 0b00);
+    drawText(w4.ctx, "x", .{x2 - 7, y1 + 3}, 0b00);
+
+    rectULBR(.{x1, y1 + 9}, .{x2, y1 + 10}, 0b00);
 }
 
 const Ball = struct {
@@ -974,6 +1006,7 @@ fn measureChar(char: u21) i32 {
         '(', ')' => 2,
         '!' => 1,
         ',' => 1,
+        'l' => 2,
         else => 3,
     };
 }
