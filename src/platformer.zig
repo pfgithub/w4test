@@ -867,6 +867,10 @@ export fn update() void {
                 // just automtaically load whenever needed.
                 // if you zoom out too far it would mess up and start lagging though
                 // - maybe set a max load count of 4 each frame
+                // or
+                // reloadLevels really isn't all that slow
+                // rather than having to have this huge buffer to store frames in (100x100x4)
+                // we could just have a single 160x160 buffer and only fill in the visible parts
             }
 
             w4.PALETTE.* = .{
@@ -875,6 +879,8 @@ export fn update() void {
                 0x9ca1d8,
                 0xc7caf3,
             };
+            // damn basically any theme works for this image
+            // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
 
             var x: i32 = 0;
             while(x < w4.CANVAS_SIZE) : (x += 1) {
@@ -883,6 +889,8 @@ export fn update() void {
                     w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + w4.Vec2{1440, 1440}));
                 }
             }
+
+            renderWindow(.{5, 5}, .{80, 80});
         },
         .platformer => {
             updateLoaded();
@@ -902,6 +910,10 @@ export fn update() void {
     //         }
     //     }
     // }
+}
+
+fn renderWindow(ul: w4.Vec2, size: w4.Vec2) void {
+    w4.ctx.rect(ul, size, 0b00);
 }
 
 const Ball = struct {
