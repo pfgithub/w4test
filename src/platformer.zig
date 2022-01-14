@@ -1268,7 +1268,7 @@ const color_themes = [_][4]u32{
 
     .{ 0x000000, 0x555555, 0xAAAAAA, 0xFFFFFF }, //     b&w
     .{ 0x211e20, 0x555568, 0xa0a08b, 0xe9efec }, //     demichrome
-    .{ 0x46425e, 0x5b768d, 0x899196, 0x86d993 }, // [!] blueish cave [next cave]
+    .{ 0x46425e, 0x5b768d, 0x899196, 0x86d993 }, // [!] blueish cave [cave]
     .{ 0x280b0b, 0x6c2e53, 0xd17c7c, 0xf6c6a8 }, // [!] reds [intro cave]
     .{ 0x7c3f58, 0xeb6b6f, 0xf9a875, 0xfff6d3 }, //     ice cream gb
     .{ 0x4e3f2a, 0x605444, 0x887b6a, 0xaea691 }, // [!] beige [outside]
@@ -1280,7 +1280,7 @@ const color_themes = [_][4]u32{
     .{ 0x210b1b, 0x4d222c, 0x9d654c, 0xcfab51 }, // [!] gold [dash unlock area]
     .{ 0x000000, 0x382843, 0x7c6d80, 0xc7c6c6 }, // [!] deep purples [dash unlock area]
 
-    .{ 0x0f0f1b, 0x565a75, 0xc6b7be, 0xfafbf6 }, //     whites
+    .{ 0x0f0f1b, 0x565a75, 0xc6b7be, 0xfafbf6 }, // [!]  whites [below the halfway mark]
 
     .{ 0x46425e, 0x5b768d, 0xd17c7c, 0xf6c6a8 }, //     colorfire
 };

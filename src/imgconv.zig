@@ -249,6 +249,26 @@ fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
         0x887b6a => 0b10,
         0xaea691 => 0b11,
 
+        0x280b0b => 0b00,
+        0x6c2e53 => 0b01,
+        0xd17c7c => 0b10,
+        0xf6c6a8 => 0b11,
+
+        0x002b59 => 0b00,
+        0x005f8c => 0b01,
+        0x00b9be => 0b10,
+        0x9ff4e5 => 0b11,
+
+        0x46425e => 0b00,
+        0x5b768d => 0b01,
+        0x899196 => 0b10,
+        0x86d993 => 0b11,
+
+        0x0f0f1b => 0b00,
+        0x565a75 => 0b01,
+        0xc6b7be => 0b10,
+        0xfafbf6 => 0b11,
+
         else => {
             std.log.err("Unknown color {x:0>6}", .{px_color});
             std.process.exit(1);
