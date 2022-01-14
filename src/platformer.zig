@@ -417,6 +417,12 @@ fn updateWorld() void {
             "Your cliff farm (10¢/10s)",
         );
     }
+    if(playerTouching(.{1115, 97}, .{1122, 97})) {
+        autoFarmPlate(&state.farm_4_purchased, &state.farm_4_coins,
+            800, "Purchase sky farm: 800¢", "↓. Produces 10¢ per 10s",
+            "Your sky farm (10¢/10s)",
+        );
+    }
 
     if(playerTouching(.{755, 642}, .{765, 642})) {
         if(state.dash_unlocked) {
@@ -439,6 +445,10 @@ fn updateWorld() void {
         }
     }
 
+    // if playerTouching(…)
+    // showNote("You've reached the end of the game", "Press ↓ to unlock cheats")
+    // showNote("Use ESDF keys to fly (gamepad2)", "Also you can dash infinite times now")
+
     if(state.frame % (60 * 10) == 0) {
         if(state.farm_0_purchased) {
             state.farm_0_coins += 2;
@@ -451,6 +461,9 @@ fn updateWorld() void {
         }
         if(state.farm_3_purchased) {
             state.farm_3_coins += 10;
+        }
+        if(state.farm_4_purchased) {
+            state.farm_4_coins += 10;
         }
     }
 
@@ -1243,6 +1256,8 @@ const State = struct {
     farm_2_coins: f32 = 0,
     farm_3_purchased: bool = false,
     farm_3_coins: f32 = 0,
+    farm_4_purchased: bool = false,
+    farm_4_coins: f32 = 0,
 };
 
 const color_themes = [_][4]u32{
