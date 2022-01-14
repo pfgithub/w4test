@@ -413,7 +413,7 @@ fn updateWorld() void {
     }
     if(playerTouching(.{352, 376}, .{357, 376})) {
         autoFarmPlate(&state.farm_3_purchased, &state.farm_3_coins,
-            5000, "Purchase cliff farm: 5,000¢", "↓. Produces 10¢ per 10s",
+            1500, "Purchase cliff farm: 1,500¢", "↓. Produces 10¢ per 10s",
             "Your cliff farm (10¢/10s)",
         );
     }
