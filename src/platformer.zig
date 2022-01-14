@@ -1250,7 +1250,7 @@ const Player = struct {
             }
             player.pos[w4.y] += 1;
         }
-        player.vel_instant_prev = player.vel_instant;
+        // player.vel_instant_prev = player.vel_instant;
         player.vel_instant = Vec2f{0, 0};
         if(player.on_ground == 0) {
             player.dash_used = false;
