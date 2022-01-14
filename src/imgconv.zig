@@ -229,14 +229,28 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
 // }
 
 fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
-    const pixel = image[(y * w + x) * 3..][0..2];
-    return switch(pixel[0]) {
-        255 => @as(u2, 0b11),
-        173 => 0b10,
-        82 => 0b01,
-        0 => 0b00,
+    const pixel = image[(y * w + x) * 3..][0..3];
+    const px_color = @as(u32, pixel[0]) << 16 | @as(u32, pixel[1]) << 8 | @as(u32, pixel[2]);
+    return switch(px_color) {
+        0x000000 => @as(u2, 0b00),
+        0x525252 => 0b01,
+        0xADADAD => 0b10,
+        0xFFFFFF => 0b11,
+
+        0xff5a6a => 0b11,
+        0xffc275 => 0b11,
+        0x003e74 => 0b00,
+        0x5252f2 => 0b01,
+        0xad75ff => 0b10,
+        0xff75c9 => 0b11,
+
+        0x4e3f2a => 0b00,
+        0x605444 => 0b01,
+        0x887b6a => 0b10,
+        0xaea691 => 0b11,
+
         else => {
-            std.log.err("Unknown color {any}", .{pixel});
+            std.log.err("Unknown color {x:0>6}", .{px_color});
             std.process.exit(1);
         },
     };
