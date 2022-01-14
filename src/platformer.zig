@@ -915,6 +915,17 @@ export fn update() void {
 fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
     w4.ctx.rect(ul, br - ul, color);
 }
+
+const Application = enum {
+    settings,
+    platformer,
+};
+const WindowState = struct {
+    application: Application,
+    ul: w4.Vec2,
+    br: w4.Vec2,
+};
+
 fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
     const x1 = ul[w4.x];
     const y1 = ul[w4.y];
@@ -926,26 +937,44 @@ fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
     // or just do the four corner thing where you blit
     // parts of an image and repeat the middle section
     // that might even use less memory than this
+
+    // rounded corners
     w4.ctx.set(.{x1 + 1, y1 + 1}, 0b00);
     w4.ctx.set(.{x2 - 2, y1 + 1}, 0b00);
     w4.ctx.set(.{x1 + 1, y2 - 2}, 0b00);
     w4.ctx.set(.{x2 - 2, y2 - 2}, 0b00);
+
+    // top, left, bottom, right walls
     rectULBR(.{x1 + 2, y1}, .{x2 - 2, y1 + 1}, 0b00);
     rectULBR(.{x1 + 2, y2 - 1}, .{x2 - 2, y2}, 0b00);
     rectULBR(.{x1, y1 + 2}, .{x1 + 1, y2 - 2}, 0b00);
     rectULBR(.{x2 - 1, y1 + 2}, .{x2, y2 - 2}, 0b00);
 
+    // shaded walls
     rectULBR(.{x1 + 2, y1 + 1}, .{x2 - 2, y1 + 2}, 0b11);
     rectULBR(.{x1 + 2, y2 - 2}, .{x2 - 2, y2 - 1}, 0b01);
     rectULBR(.{x1 + 1, y1 + 2}, .{x1 + 2, y2 - 2}, 0b01);
     rectULBR(.{x2 - 2, y1 + 2}, .{x2 - 1, y2 - 2}, 0b01);
 
+    // background
     rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, 0b10);
 
+    // titlebar separation
+    rectULBR(.{x1, y1 + 9}, .{x2, y1 + 10}, 0b00);
+
+    // === these should be rendered by the window ===
+
+    // titlebar:
     drawText(w4.ctx, title, .{x1 + 3, y1 + 3}, 0b00);
     drawText(w4.ctx, "x", .{x2 - 7, y1 + 3}, 0b00);
 
-    rectULBR(.{x1, y1 + 9}, .{x2, y1 + 10}, 0b00);
+    // content
+    drawText(w4.ctx,
+        \\Welcome to platformer!
+        \\
+        \\Do you agree to the EULA?
+        \\If you do not, too bad.
+    , .{x1 + 3, y1 + 12}, 0b00);
 }
 
 const Ball = struct {
@@ -985,11 +1014,17 @@ const Ball = struct {
 
 fn measureText(text: []const u8) i32 {
     var res: i32 = 0;
+    var cres: i32 = 0;
 
     var view = std.unicode.Utf8View.initUnchecked(text);
     var iter = view.iterator();
     while(iter.nextCodepoint()) |char| {
-        res += measureChar(char) + 1;
+        if(char == '\n') {
+            cres = 0;
+        }else{
+            cres += measureChar(char) + 1;
+        }
+        res = @maximum(cres, res);
     }
 
     return @maximum(res - 1, 0);
@@ -1007,6 +1042,7 @@ fn measureChar(char: u21) i32 {
         '!' => 1,
         ',' => 1,
         'l' => 2,
+        ' ' => 2,
         else => 3,
     };
 }
@@ -1062,8 +1098,12 @@ fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: u2) voi
     var i: i32 = 0;
     var pos = pos_ul;
     while(iter.nextCodepoint()) |char| : (i += 1) {
-        renderChar(tex, char, pos, color);
-        pos += w4.Vec2{measureChar(char) + 1, 0};
+        if(char == '\n') {
+            pos = w4.Vec2{pos_ul[w4.x], pos[w4.y] + 6};
+        }else{
+            renderChar(tex, char, pos, color);
+            pos += w4.Vec2{measureChar(char) + 1, 0};
+        }
     }
 }
 fn measureNumber(num_initial: f32) i32 {
