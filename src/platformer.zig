@@ -1236,7 +1236,7 @@ var state: State = undefined;
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
     // or source modifications.
-    const save_version: u8 = 2; // increase this to reset the save. must not be 0.
+    const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
     player: Player = .{},
@@ -1261,6 +1261,27 @@ const State = struct {
     farm_3_coins: f32 = 0,
     farm_4_purchased: bool = false,
     farm_4_coins: f32 = 0,
+};
+
+const GameScreen = enum{
+    // we could have a mouse you can move around with arrow keys or mouse
+    // and then from there you open clickergame.exe
+    // - you start on a screen that's like a normal clicker. you click the thing
+    //   on the left and there are upgrades on the right.
+    // and then you purchase "platformer" and it opens the platformer game
+    // the reason for this is because the platformer is kinda boring but the intro
+    // is neat
+
+    // also it would be really fun to have a language selection screen
+    // I don't actually know any other languages but it'd be super cool anyway
+    // - english
+    // - spanish
+    // - japanese
+    // - russian
+    // not that many strings to translate, I just have to add in a few characters
+    // to my character map
+    computer,
+    game,
 };
 
 const color_themes = [_][4]u32{
