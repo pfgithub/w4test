@@ -13,18 +13,10 @@ const dev_mode = switch(@import("builtin").mode) {
     else => false,
 };
 
-const LevelTex = img.decompressionData(w4.Vec2{160, 160});
-var level_tex: LevelTex = undefined;
-var level_ul_x: i32 = undefined;
-var level_ul_y: i32 = undefined;
-
 var decompressed_image: ?w4.Tex(.mut) = null;
 
 export fn start() void {
     w4.SYSTEM_FLAGS.preserve_framebuffer = true;
-
-    level_ul_x = -10;
-    level_ul_y = -10;
 
     state = .{};
 }
@@ -44,6 +36,8 @@ var mouse_down_this_frame = false;
 
 var mouse_last_frame: w4.Mouse = w4.Mouse{};
 
+var rerender = true;
+
 export fn update() void {
     state.frame += 1;
 
@@ -55,8 +49,7 @@ export fn update() void {
     }
 
     if(Computer.bg_transition_start != 0) {
-        level_ul_x = -10;
-        level_ul_y = -10;
+        rerender = true;
 
         const time_unscaled = @intToFloat(f32, state.frame - Computer.bg_transition_start) / 20.0;
         const time = easeInOut(time_unscaled);
@@ -68,8 +61,8 @@ export fn update() void {
             shx = 160 - shx - 160;
         }
 
-        img.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
-        img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
+        img.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
+        img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
 
         w4.PALETTE.* = themeMix(
             all_backgrounds[Computer.bg_transition_from].palette,
@@ -81,20 +74,9 @@ export fn update() void {
             Computer.bg_transition_start = 0;
         }
     }else{
-        if(level_ul_x != -5 or level_ul_y != -5 or loaded_bg != state.computer.desktop_background) {
-            level_ul_x = -5;
-            level_ul_y = -5;
-            loaded_bg = state.computer.desktop_background;
-
-            img.decompress(all_backgrounds[loaded_bg].file, .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
-            // ok if we did some super fancy stuff
-            // we could transition between backgrounds with a sliding effect
-            // like :: mix the palettes and while transitioning, decompress 8 times
-            // each frame
-            // that could be extremely neat i think
-            // also if we keep decompression cheap we could switch
-            // to just keeping one `level_bg` tex and decompressing once here
-            // but four times each frame in-game
+        if(rerender) {
+            img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, w4.ctx, .{0, 0}) catch unreachable;
+            rerender = false;
         }
 
         w4.PALETTE.* = all_backgrounds[state.computer.desktop_background].palette;
@@ -102,14 +84,6 @@ export fn update() void {
 
     // damn basically any theme works for this image
     // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
-
-    var x: i32 = 0;
-    while(x < w4.CANVAS_SIZE) : (x += 1) {
-        var y: i32 = 0;
-        while(y < w4.CANVAS_SIZE) : (y += 1) {
-            w4.ctx.set(.{x, y}, level_tex.tex().get(.{x, y}));
-        }
-    }
 
     renderWindow(&state.computer.window);
 
@@ -139,8 +113,6 @@ fn easeInOut(t: f32) f32 {
 fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
     w4.ctx.rect(ul, br - ul, color);
 }
-
-var loaded_bg: u8 = 0;
 
 const BackgroundImage = struct {
     attribution: []const u8,
@@ -178,8 +150,8 @@ const all_backgrounds = [_]BackgroundImage{
 
     BackgroundImage.from("Blake Verdoorn", @embedFile("backgrounds/Blake Verdoorn.jpg.w4i")), // 5073
     BackgroundImage.from("Tobias Reich", @embedFile("backgrounds/Tobias Reich on Unsplash.jpg.w4i")), // 5223
-    // BackgroundImage.from("eberhard grossgasteiger", @embedFile("backgrounds/eberhard grossgasteiger.jpg.w4i")), // 5305
-    // BackgroundImage.from("Kenzie Broad", @embedFile("backgrounds/Kenzie Broad on Unsplash.jpg.w4i")), // 5929
+    BackgroundImage.from("eberhard grossgasteiger", @embedFile("backgrounds/eberhard grossgasteiger.jpg.w4i")), // 5305
+    BackgroundImage.from("Kenzie Broad", @embedFile("backgrounds/Kenzie Broad on Unsplash.jpg.w4i")), // 5929
     // BackgroundImage.from("Someone", @embedFile("backgrounds/Idk.jpg.w4i")), // 6547 (bad compression)
     // BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")), // 6814 (bad compression)
     // BackgroundImage.from("Sébastien Marchand", @embedFile("backgrounds/Sébastien Marchand~2.jpg.w4i")), // 6831 (bad compression)
@@ -229,20 +201,21 @@ const Application = enum {
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(w4.Vec2{x1 + 22, y1 + 7} + offset, .{20, 20});
 
-                const mini_bg_sz = 18;
-                var x: i32 = 0;
-                while(x < mini_bg_sz) : (x += 1) {
-                    var y: i32 = 0;
-                    while(y < mini_bg_sz) : (y += 1) {
-                        w4.ctx.set(
-                            w4.Vec2{x1 + 23 + x, y1 + 8 + y} + offset,
-                            level_tex.tex().get(w4.Vec2{
-                                @divFloor(x * w4.CANVAS_SIZE, mini_bg_sz),
-                                @divFloor(y * w4.CANVAS_SIZE, mini_bg_sz),
-                            }),
-                        );
-                    }
-                }
+                // const mini_bg_sz = 18;
+                // var x: i32 = 0;
+                // while(x < mini_bg_sz) : (x += 1) {
+                //     var y: i32 = 0;
+                //     while(y < mini_bg_sz) : (y += 1) {
+                //         w4.ctx.set(
+                //             w4.Vec2{x1 + 23 + x, y1 + 8 + y} + offset,
+                //             level_tex.tex().get(w4.Vec2{
+                //                 @divFloor(x * w4.CANVAS_SIZE, mini_bg_sz),
+                //                 @divFloor(y * w4.CANVAS_SIZE, mini_bg_sz),
+                //             }),
+                //         );
+                //     }
+                // }
+                // TODO
 
                 if(button("<", w4.Vec2{x1 + 14, y1 + 13} + offset)) {
                     Computer.bg_transition_from = state.computer.desktop_background;
@@ -287,6 +260,7 @@ fn renderWindow(window: *WindowState) void {
     }
     if(window.dragging) {
         window.ul += mpos - mouse_last_frame.pos();
+        rerender = true;
     }
     const max_pos = w4.Vec2{w4.CANVAS_SIZE - 4, w4.CANVAS_SIZE - 4};
     if(window.ul[w4.x] > max_pos[w4.x]) window.ul[w4.x] = max_pos[w4.x];
