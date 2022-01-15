@@ -860,7 +860,7 @@ export fn update() void {
             while(x < w4.CANVAS_SIZE) : (x += 1) {
                 var y: i32 = 0;
                 while(y < w4.CANVAS_SIZE) : (y += 1) {
-                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + w4.Vec2{-5 * chunk_size, -5 * chunk_size}));
+                    w4.ctx.set(.{x, y}, level_tex.tex().get(.{x, y}));
                 }
             }
 
@@ -982,10 +982,10 @@ const Application = enum {
                     while(y < mini_bg_sz) : (y += 1) {
                         w4.ctx.set(
                             .{x1 + 23 + x, y1 + 8 + y},
-                            getWorldPixelRaw(w4.Vec2{
+                            level_tex.tex().get(w4.Vec2{
                                 @divFloor(x * w4.CANVAS_SIZE, mini_bg_sz),
                                 @divFloor(y * w4.CANVAS_SIZE, mini_bg_sz),
-                            } + w4.Vec2{-5 * chunk_size, -5 * chunk_size}),
+                            }),
                         );
                     }
                 }
