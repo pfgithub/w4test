@@ -152,8 +152,8 @@ const all_backgrounds = [_]BackgroundImage{
     BackgroundImage.from("Tobias Reich", @embedFile("backgrounds/Tobias Reich on Unsplash.jpg.w4i")), // 5223
     BackgroundImage.from("eberhard grossgasteiger", @embedFile("backgrounds/eberhard grossgasteiger.jpg.w4i")), // 5305
     BackgroundImage.from("Kenzie Broad", @embedFile("backgrounds/Kenzie Broad on Unsplash.jpg.w4i")), // 5929
-    // BackgroundImage.from("Someone", @embedFile("backgrounds/Idk.jpg.w4i")), // 6547 (bad compression)
-    // BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")), // 6814 (bad compression)
+    BackgroundImage.from("Someone", @embedFile("backgrounds/Idk.jpg.w4i")), // 6547 (bad compression)
+    BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")), // 6814 (bad compression)
     // BackgroundImage.from("Sébastien Marchand", @embedFile("backgrounds/Sébastien Marchand~2.jpg.w4i")), // 6831 (bad compression)
 
     // beautiful but there's already another snow one

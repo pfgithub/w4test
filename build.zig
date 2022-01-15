@@ -63,7 +63,9 @@ pub fn build(b: *std.build.Builder) void {
 
     const mode = b.standardReleaseOptions();
 
-    const lib = b.addSharedLibrary("cart", "src/background_selector.zig", .unversioned);
+    const application = "src/background_selector.zig";
+
+    const lib = b.addSharedLibrary("cart", application, .unversioned);
     lib.setBuildMode(mode);
     lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     lib.step.dependOn(&platformer_image.step);
@@ -72,8 +74,13 @@ pub fn build(b: *std.build.Builder) void {
     lib.import_memory = true;
     lib.initial_memory = 65536;
     lib.max_memory = 65536;
-    lib.global_base = 6560;
-    lib.stack_size = 8192;
+    if(std.mem.eql(u8, application, "src/background_selector.zig")) {
+        // lib.stack_size = 0x100;
+        lib.stack_size = 14752 / 2 - 32;
+    }else{
+        lib.global_base = 6560;
+        lib.stack_size = 8192;
+    }
     lib.export_symbol_names = &[_][]const u8{ "start", "update" };
     lib.install();
 
