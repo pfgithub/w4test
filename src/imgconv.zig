@@ -120,8 +120,12 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
         }
     }
 
+    // if(@import("builtin").target.os.tag == .freestanding) {
+    //     w4.trace("hmm. wrote: {d} / {d}", .{written_count, tex_out.size[0] * tex_out.size[1]});
+    // }
+
     // std.log.debug("decompression read {d}/{d}", .{written_count, tex_out.size[0] * tex_out.size[1]});
-    if(written_count < tex_out.size[0] * tex_out.size[1]) unreachable;
+    if(written_count < size_in[0] * size_in[1]) unreachable;
 }
 
 /// output:

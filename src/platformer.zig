@@ -57,23 +57,14 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-const LevelTex = img.decompressionData(w4.Vec2{chunk_size, chunk_size});
-var levels: [4]LevelTex = .{
-    .{},
-    .{},
-    .{},
-    .{},
-};
-var level_ul: *LevelTex = undefined;
-var level_ur: *LevelTex = undefined;
-var level_bl: *LevelTex = undefined;
-var level_br: *LevelTex = undefined;
+const LevelTex = img.decompressionData(w4.Vec2{chunk_size * 2, chunk_size * 2});
+var level_tex: LevelTex = undefined;
 var level_ul_x: i32 = undefined;
 var level_ul_y: i32 = undefined;
 
 var decompressed_image: ?w4.Tex(.mut) = null;
 
-fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
+fn decompressLevel(x: i32, y: i32, offset: w4.Vec2) void {
     if(x < 0 or x >= chunk_count) unreachable;
     if(y < 0 or y >= chunk_count) unreachable;
 
@@ -82,8 +73,8 @@ fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
     img.decompress(
         levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
         .{chunk_size, chunk_size},
-        ptr.texMut(),
-        .{0, 0},
+        level_tex.texMut(),
+        offset,
     ) catch unreachable;
 }
 
@@ -93,21 +84,9 @@ export fn start() void {
     if(test_program) {
         return;
     }
-    // load all four levels (undefined is not good to have lying around)
 
-    // then, just reload levels when the person gets near an edge
-
-    replaceLevel(&levels[0], 0, 0);
-    replaceLevel(&levels[1], 1, 0);
-    replaceLevel(&levels[2], 0, 1);
-    replaceLevel(&levels[3], 1, 1);
-
-    level_ul = &levels[0];
-    level_ur = &levels[1];
-    level_bl = &levels[2];
-    level_br = &levels[3];
-    level_ul_x = 0;
-    level_ul_y = 0;
+    level_ul_x = -10;
+    level_ul_y = -10;
 }
 
 fn ulLevelFloat() Vec2f {
@@ -118,13 +97,14 @@ fn ulLevelFloat() Vec2f {
 }
 
 fn reloadLevels() void {
-    replaceLevel(level_ul, level_ul_x, level_ul_y);
-    replaceLevel(level_ur, level_ul_x + 1, level_ul_y);
-    replaceLevel(level_bl, level_ul_x, level_ul_y + 1);
-    replaceLevel(level_br, level_ul_x + 1, level_ul_y + 1);
+    decompressLevel(level_ul_x, level_ul_y, .{0, 0});
+    decompressLevel(level_ul_x + 1, level_ul_y, .{chunk_size, 0});
+    decompressLevel(level_ul_x, level_ul_y + 1, .{0, chunk_size});
+    decompressLevel(level_ul_x + 1, level_ul_y + 1, .{chunk_size, chunk_size});
     // w4.trace("reloading…");
 
     // we can be smart and only reload the parts that are needed if we want
+    // jk we can't anymore I changed how it works
 }
 
 fn updateLoaded() void {
@@ -166,18 +146,8 @@ fn updateLoaded() void {
 
 fn getWorldPixelRaw(pos: w4.Vec2) u2 {
     const ul_pos = w4.Vec2{level_ul_x * chunk_size, level_ul_y * chunk_size};
-    const center_pos = ul_pos + w4.Vec2{chunk_size, chunk_size};
 
-    if(pos[w4.x] >= center_pos[w4.x] and pos[w4.y] >= center_pos[w4.y]) {
-        return level_br.tex().get(pos - w4.Vec2{center_pos[w4.x], center_pos[w4.y]});
-    }
-    if(pos[w4.x] >= center_pos[w4.x]) {
-        return level_ur.tex().get(pos - w4.Vec2{center_pos[w4.x], ul_pos[w4.y]});
-    }
-    if(pos[w4.y] >= center_pos[w4.y]) {
-        return level_bl.tex().get(pos - w4.Vec2{ul_pos[w4.x], center_pos[w4.y]});
-    }
-    return level_ul.tex().get(pos - w4.Vec2{ul_pos[w4.x], ul_pos[w4.y]});
+    return level_tex.tex().get(pos - ul_pos);
 }
 /// inclusive
 fn pointWithin(pos: w4.Vec2, ul: w4.Vec2, br: w4.Vec2) bool {
@@ -871,10 +841,7 @@ export fn update() void {
                 level_ul_y = -5;
                 loaded_bg = state.computer.desktop_background;
 
-                img.decompress(loaded_bg.file(), .{160, 160}, level_ul.texMut(), .{0, 0}) catch unreachable;
-                img.decompress(loaded_bg.file(), .{160, 160}, level_ur.texMut(), .{-chunk_size, 0}) catch unreachable;
-                img.decompress(loaded_bg.file(), .{160, 160}, level_bl.texMut(), .{0, -chunk_size}) catch unreachable;
-                img.decompress(loaded_bg.file(), .{160, 160}, level_br.texMut(), .{-chunk_size, -chunk_size}) catch unreachable;
+                img.decompress(loaded_bg.file(), .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
                 // ok if we did some super fancy stuff
                 // we could transition between backgrounds with a sliding effect
                 // like :: mix the palettes and while transitioning, decompress 8 times
