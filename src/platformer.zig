@@ -859,8 +859,18 @@ export fn update() void {
 
     switch(state.game_screen) {
         .computer => {
-            if(level_ul_x != chunk_count - 2 or level_ul_y != chunk_count - 2) {
-                level_ul_x = chunk_count - 2;
+            if(dev_mode and w4.GAMEPAD2.button_1) {
+                state.computer.desktop_background += 1;
+                state.computer.desktop_background %= 2;
+            }
+
+            const x_offset: i32 = if(state.computer.desktop_background == 0) (
+                chunk_count - 4
+            ) else (
+                chunk_count - 2
+            );
+            if(level_ul_x != x_offset or level_ul_y != chunk_count - 2) {
+                level_ul_x = x_offset;
                 level_ul_y = chunk_count - 2;
                 reloadLevels();
                 // oh rather than manual reloadLevels we could probably
@@ -873,11 +883,25 @@ export fn update() void {
                 // we could just have a single 160x160 buffer and only fill in the visible parts
             }
 
-            w4.PALETTE.* = .{
-                0x4e5079,
-                0x656b9f,
-                0x9ca1d8,
-                0xc7caf3,
+            const bg_pos = w4.Vec2{
+                1200 + (@as(i32, state.computer.desktop_background) * 200),
+                1440,
+            };
+
+            w4.PALETTE.* = switch(state.computer.desktop_background) {
+                0 => .{
+                    0x214140,
+                    0x095956,
+                    0x2f8b76,
+                    0x4ea7a1,
+                },
+                1 => .{
+                    0x4e5079,
+                    0x656b9f,
+                    0x9ca1d8,
+                    0xc7caf3,
+                },
+                else => unreachable,
             };
             // damn basically any theme works for this image
             // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
@@ -886,11 +910,12 @@ export fn update() void {
             while(x < w4.CANVAS_SIZE) : (x += 1) {
                 var y: i32 = 0;
                 while(y < w4.CANVAS_SIZE) : (y += 1) {
-                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + w4.Vec2{1440, 1440}));
+                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + bg_pos));
                 }
             }
 
             renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
+            renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
         .platformer => {
             updateLoaded();
@@ -925,6 +950,10 @@ const WindowState = struct {
     ul: w4.Vec2,
     br: w4.Vec2,
 };
+fn renderSettings() void {
+    // show a palette switcher or smth
+    // desktop background picker
+}
 
 fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
     const x1 = ul[w4.x];
@@ -1379,6 +1408,16 @@ const Player = struct {
     }
 };
 
+const Computer = struct {
+    desktop_background: u8 = 0,
+};
+// oh btw it looks like compression is doing extremely bad for those images
+// we'll have to optimize the compression thing to work better there
+// like an image might even be slightly more kb than it would be raw
+// at the very least, it should store a chunk as raw if compression takes
+// more space
+// but ideally we'd optimize settings for each chunk
+
 var state: State = undefined;
 
 const State = struct {
@@ -1391,6 +1430,7 @@ const State = struct {
     game_screen: GameScreen = .computer,
 
     player: Player = .{},
+    computer: Computer = .{},
     // if the player is on a moving platform, don't control this with player_vel.
     // we need like a player_environment_vel or something.
 
