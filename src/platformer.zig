@@ -844,23 +844,52 @@ export fn update() void {
                 state.computer.desktop_background = state.computer.desktop_background.next();
             }
 
-            if(level_ul_x != -5 or level_ul_y != -5 or loaded_bg != state.computer.desktop_background) {
-                level_ul_x = -5;
-                level_ul_y = -5;
-                loaded_bg = state.computer.desktop_background;
+            if(Computer.bg_transition_start != 0) {
+                level_ul_x = -10;
+                level_ul_y = -10;
 
-                img.decompress(loaded_bg.file(), .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
-                // ok if we did some super fancy stuff
-                // we could transition between backgrounds with a sliding effect
-                // like :: mix the palettes and while transitioning, decompress 8 times
-                // each frame
-                // that could be extremely neat i think
-                // also if we keep decompression cheap we could switch
-                // to just keeping one `level_bg` tex and decompressing once here
-                // but four times each frame in-game
+                const time_unscaled = @intToFloat(f32, state.frame - Computer.bg_transition_start) / 20.0;
+                const time = easeInOut(time_unscaled);
+
+                var shx = @floatToInt(i32, time * 160);
+                var shx2 = shx - 160;
+                if(Computer.bg_transition_dir == 1) {
+                    shx2 = 160 - shx2 - 160;
+                    shx = 160 - shx - 160;
+                }
+
+                img.decompress(Computer.bg_transition_from.file(), .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
+                img.decompress(state.computer.desktop_background.file(), .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
+
+                w4.PALETTE.* = themeMix(
+                    Computer.bg_transition_from.palette(),
+                    state.computer.desktop_background.palette(),
+                    time,
+                );
+
+                if(time_unscaled >= 1.0) {
+                    Computer.bg_transition_start = 0;
+                }
+            }else{
+                if(level_ul_x != -5 or level_ul_y != -5 or loaded_bg != state.computer.desktop_background) {
+                    level_ul_x = -5;
+                    level_ul_y = -5;
+                    loaded_bg = state.computer.desktop_background;
+
+                    img.decompress(loaded_bg.file(), .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
+                    // ok if we did some super fancy stuff
+                    // we could transition between backgrounds with a sliding effect
+                    // like :: mix the palettes and while transitioning, decompress 8 times
+                    // each frame
+                    // that could be extremely neat i think
+                    // also if we keep decompression cheap we could switch
+                    // to just keeping one `level_bg` tex and decompressing once here
+                    // but four times each frame in-game
+                }
+
+                w4.PALETTE.* = state.computer.desktop_background.palette();
             }
 
-            w4.PALETTE.* = state.computer.desktop_background.palette();
             // damn basically any theme works for this image
             // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
 
@@ -896,13 +925,19 @@ export fn update() void {
     // }
 }
 
+fn easeInOut(t: f32) f32 {
+    return @maximum(0.0, @minimum(1.0, t * t * (3.0 - 2.0 * t)));
+}
+
 fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
     w4.ctx.rect(ul, br - ul, color);
 }
 
-var loaded_bg: BackgroundImage = .peter_wormstetter;
+var loaded_bg: BackgroundImage = BackgroundImage.default;
 
 const BackgroundImage = enum {
+    pub const default = BackgroundImage.peter_wormstetter;
+
     peter_wormstetter,
     caleb_ralston,
 
@@ -959,7 +994,7 @@ const Application = enum {
     none,
     pub fn windowSize(app: Application) w4.Vec2 {
         return switch(app) {
-            .settings => .{100, 80},
+            .settings => .{80, 40},
             .clicker => .{100, 80},
             .platformer => .{100, 80},
             .none => unreachable,
@@ -996,10 +1031,16 @@ const Application = enum {
                 }
 
                 if(button("<", .{x1 + 14, y1 + 13})) {
+                    Computer.bg_transition_from = state.computer.desktop_background;
                     state.computer.desktop_background = state.computer.desktop_background.prev();
+                    Computer.bg_transition_dir = 0;
+                    Computer.bg_transition_start = state.frame;
                 }
                 if(button(">", .{x1 + 45, y1 + 13})) {
+                    Computer.bg_transition_from = state.computer.desktop_background;
                     state.computer.desktop_background = state.computer.desktop_background.next();
+                    Computer.bg_transition_dir = 1;
+                    Computer.bg_transition_start = state.frame;
                 }
             },
             .platformer => {},
@@ -1439,7 +1480,10 @@ const Player = struct {
 };
 
 const Computer = struct {
-    desktop_background: BackgroundImage = .peter_wormstetter,
+    var bg_transition_from: BackgroundImage = BackgroundImage.default;
+    var bg_transition_start: u64 = 0;
+    var bg_transition_dir: u1 = 0;
+    desktop_background: BackgroundImage = BackgroundImage.default,
     window: WindowState = .{
         .ul = w4.Vec2{20, 30},
         .application = .settings,
