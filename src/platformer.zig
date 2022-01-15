@@ -779,7 +779,8 @@ const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80
 var use_key_this_frame = false;
 var use_key_last_frame = false;
 var mouse_down_this_frame = false;
-var mouse_down_last_frame = false;
+
+var mouse_last_frame: w4.Mouse = w4.Mouse{};
 
 const test_program = false;
 
@@ -809,6 +810,8 @@ export fn update() void {
     }
     state.frame += 1;
 
+    defer mouse_last_frame = w4.MOUSE.*;
+
     use_key_this_frame = false;
     mouse_down_this_frame = false;
     show_note_this_frame = null;
@@ -823,10 +826,9 @@ export fn update() void {
     }
     use_key_last_frame = w4.GAMEPAD1.button_down;
 
-    if(w4.MOUSE.buttons.left and !mouse_down_last_frame) {
+    if(w4.MOUSE.buttons.left and !mouse_last_frame.buttons.left) {
         mouse_down_this_frame = true;
     }
-    mouse_down_last_frame = w4.MOUSE.buttons.left;
 
     if(dev_mode and w4.GAMEPAD2.button_2) {
         // we'll make it so you can press r to bring up a pause menu while in game
@@ -1017,6 +1019,8 @@ const Application = enum {
 const WindowState = struct {
     application: Application,
     ul: w4.Vec2,
+
+    dragging: bool = false,
 };
 fn renderSettings() void {
     // show a palette switcher or smth
@@ -1038,6 +1042,8 @@ fn renderWindow(window: *WindowState) void {
     const y1 = ul[w4.y];
     const x2 = br[w4.x];
     const y2 = br[w4.y];
+
+    // TODO if mouse within window area and mouse_click: bring to front
 
     // or just do the four corner thing where you blit
     // parts of an image and repeat the middle section
@@ -1080,6 +1086,21 @@ fn renderWindow(window: *WindowState) void {
     if(xbtn_click) {
         window.application = .none;
     }
+
+    // window drag handle
+    const mpos = w4.MOUSE.pos();
+    if(!w4.MOUSE.buttons.left) {
+        window.dragging = false;
+    }
+    if(pointWithin(mpos, .{x1, y1}, .{x2 - 1, y1 + 9})) {
+        if(mouse_down_this_frame) {
+            window.dragging = true;
+            mouse_down_this_frame = false;
+        }
+    }
+    if(window.dragging) {
+        window.ul += mpos - mouse_last_frame.pos();
+    }
 }
 
 fn button(text: []const u8, ul: w4.Vec2) bool {
@@ -1093,7 +1114,11 @@ fn button(text: []const u8, ul: w4.Vec2) bool {
     }
     drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, 0b00);
 
-    return hovering and mouse_down_this_frame;
+    const clicked = hovering and mouse_down_this_frame;
+    if(clicked) {
+        mouse_down_this_frame = false;
+    }
+    return clicked;
 }
 
 const Ball = struct {

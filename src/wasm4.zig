@@ -139,9 +139,9 @@ pub const Gamepad = packed struct {
 };
 
 pub const Mouse = packed struct {
-    x: i16,
-    y: i16,
-    buttons: MouseButtons,
+    x: i16 = 0,
+    y: i16 = 0,
+    buttons: MouseButtons = .{},
     pub fn pos(mouse: Mouse) Vec2 {
         return .{ mouse.x, mouse.y };
     }
@@ -151,9 +151,9 @@ pub const Mouse = packed struct {
 };
 
 pub const MouseButtons = packed struct {
-    left: bool,
-    right: bool,
-    middle: bool,
+    left: bool = false,
+    right: bool = false,
+    middle: bool = false,
     _: u5 = 0,
     comptime {
         if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
