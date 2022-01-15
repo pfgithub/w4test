@@ -367,7 +367,7 @@ pub fn processSubimage(
             // 1. reduce to four colors
             // 2. modify the image to use the reduced palette
 
-            std.log.err("Too many colors: {x}", .{all_colors.items});
+            std.log.err("Wrong number of colors: {x}", .{all_colors.items});
             // TODO pick the middle one of each luminance section
             std.process.exit(1);
         }
@@ -392,6 +392,12 @@ pub fn processSubimage(
         if(compressed.len > al.items.len + 1) {
             std.log.warn("Compressed image is larger than original. Original: {d}, Compressed: {d}", .{al.items.len + 1, compressed.len});
             // TODO: use the original image with a special header directly instead of compressing it
+        }
+
+        const compressedv2 = try compress2bpp(alloc, compressed, w4.Vec2{1, @intCast(i32, compressed.len)});
+        if(compressedv2.len < compressed.len) {
+            std.log.err("Double compressed image is smaller than single compressed image. Original: {d}, Compressed: {d}, Double compressed: {d}", .{al.items.len + 1, compressed.len, compressedv2.len});
+            std.process.exit(1);
         }
 
         result = compressed;

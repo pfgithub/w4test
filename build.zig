@@ -19,10 +19,35 @@ pub fn build(b: *std.build.Builder) void {
 
     const all_backgrounds = b.step("bg", "backgrounds");
     for([_][]const u8{
-        "Peter Wormstetter.png",
-        "Caleb Ralston.png",
         "Ales Krivec.jpg",
         "Blake Verdoorn.jpg",
+        "Caleb Ralston.png",
+        "Cosmic Timetraveler on Unsplash.jpg",
+        "Dominik Lange on Unsplash.jpg",
+        "Idk.jpg",
+        "Jose Murillo on Unsplash.png",
+        "Kenzie Broad on Unsplash.jpg",
+        "Nadie sepa.png",
+        "Nelly Volkovich.jpg",
+        // "No Permission.png",
+        "Nobody.png",
+        "Not sure.jpg",
+        "Pascal Debrunner on Unsplash.jpg",
+        "Pascal Debrunner on Unsplash~2.jpg",
+        "Peter Wormstetter.png",
+        "Philip Davis.jpg",
+        "Philip Davis~2.jpg",
+        "Reed Naliboff on Unsplash.jpg",
+        "Sébastien Marchand.jpg",
+        "Sébastien Marchand~2.jpg",
+        "Sven Scheuermeier.jpg",
+        "Tiago Muraro on Unsplash.jpg",
+        "Tobias Reich on Unsplash.jpg",
+        "Vadim Sherbakov on Unsplash.jpg",
+        "Who knows.png",
+        "Wolfgang Hasselmann.jpg",
+        "eberhard grossgasteiger.jpg",
+        "iuliu illes on Unsplash.jpg",
         "Nobody.png",
     }) |bg_name| {
         const desktop_background = b.addSystemCommand(&.{
@@ -38,7 +63,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const mode = b.standardReleaseOptions();
 
-    const lib = b.addSharedLibrary("cart", "src/platformer.zig", .unversioned);
+    const lib = b.addSharedLibrary("cart", "src/background_selector.zig", .unversioned);
     lib.setBuildMode(mode);
     lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     lib.step.dependOn(&platformer_image.step);

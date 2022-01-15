@@ -6,6 +6,8 @@ make sure you aren't over the size limit:
 
 recommend also using wasm-opt -Oz because it got likt 50kb → 46kb
 
+check this: `wasm-objdump zig-out/lib/cart.wasm -x -j code`
+
 ## TODO:
 
 - [ ] finish up the game

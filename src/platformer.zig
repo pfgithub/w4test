@@ -1055,6 +1055,23 @@ fn renderSettings() void {
 fn renderWindow(window: *WindowState) void {
     if(window.application == .none) return;
 
+    // window drag handle 1/2
+    const mpos = w4.MOUSE.pos();
+    if(!w4.MOUSE.buttons.left) {
+        window.dragging = false;
+    }
+    if(window.dragging) {
+        window.ul += mpos - mouse_last_frame.pos();
+    }
+    const max_pos = w4.Vec2{w4.CANVAS_SIZE - 4, w4.CANVAS_SIZE - 4};
+    if(window.ul[w4.x] > max_pos[w4.x]) window.ul[w4.x] = max_pos[w4.x];
+    if(window.ul[w4.y] > max_pos[w4.y]) window.ul[w4.y] = max_pos[w4.y];
+    // window.ul = @minimum(ul, max_pos);
+    const min_pos = w4.Vec2{-10, 0};
+    if(window.ul[w4.x] < min_pos[w4.x]) window.ul[w4.x] = min_pos[w4.x];
+    if(window.ul[w4.y] < min_pos[w4.y]) window.ul[w4.y] = min_pos[w4.y];
+    // window.ul = @maximum(ul, min_pos);
+
     const ul = window.ul;
     const br = window.ul + window.application.windowSize() + w4.Vec2{2 + 2, 11 + 2};
     const x1 = ul[w4.x];
@@ -1107,28 +1124,13 @@ fn renderWindow(window: *WindowState) void {
         // TODO: disabled for now
     }
 
-    // window drag handle
-    const mpos = w4.MOUSE.pos();
-    if(!w4.MOUSE.buttons.left) {
-        window.dragging = false;
-    }
+    // window drag handle 2/2
     if(pointWithin(mpos, .{x1, y1}, .{x2 - 1, y1 + 9})) {
         if(mouse_down_this_frame) {
             window.dragging = true;
             mouse_down_this_frame = false;
         }
     }
-    if(window.dragging) {
-        window.ul += mpos - mouse_last_frame.pos();
-    }
-    const max_pos = w4.Vec2{w4.CANVAS_SIZE - 4, w4.CANVAS_SIZE - 4};
-    if(window.ul[w4.x] > max_pos[w4.x]) window.ul[w4.x] = max_pos[w4.x];
-    if(window.ul[w4.y] > max_pos[w4.y]) window.ul[w4.y] = max_pos[w4.y];
-    // window.ul = @minimum(ul, max_pos);
-    const min_pos = w4.Vec2{-x2, 0};
-    if(window.ul[w4.x] < min_pos[w4.x]) window.ul[w4.x] = min_pos[w4.x];
-    if(window.ul[w4.y] < min_pos[w4.y]) window.ul[w4.y] = min_pos[w4.y];
-    // window.ul = @maximum(ul, min_pos);
 }
 
 fn button(text: []const u8, ul: w4.Vec2) bool {
