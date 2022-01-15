@@ -937,10 +937,12 @@ const BackgroundImage = struct {
     palette: [4]u32,
 
     pub fn from(comptime author: []const u8, file_raw: []const u8) BackgroundImage {
+        // const content_file_raw = file_raw;
+        const content_file_raw = @embedFile("backgrounds/Nobody.png.w4i");
         const value = file_raw[0..@sizeOf(u32) * 4];
         return .{
             .attribution = author, // TODO don't do this
-            .file = file_raw[@sizeOf(u32) * 4..],
+            .file = content_file_raw[@sizeOf(u32) * 4..],
             .palette = .{
                 std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
                 std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),

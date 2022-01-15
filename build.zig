@@ -23,6 +23,7 @@ pub fn build(b: *std.build.Builder) void {
         "Caleb Ralston.png",
         "Ales Krivec.jpg",
         "Blake Verdoorn.jpg",
+        "Nobody.png",
     }) |bg_name| {
         const desktop_background = b.addSystemCommand(&.{
             "zig-out/bin/imgconv",
