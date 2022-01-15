@@ -724,14 +724,6 @@ fn handleGameKeys() Vec2f {
         }
     }
 
-    if(w4.GAMEPAD1.button_down) {
-        if(!state.player.down_key_held) {
-            state.player.down_key_held = true;
-            use_key_this_frame = true;
-        }
-    }else{
-        state.player.down_key_held = false;
-    }
     if(!w4.GAMEPAD1.button_2) {
         dash_key_used = false;
     }
@@ -785,6 +777,9 @@ fn handleGameKeys() Vec2f {
 const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
 
 var use_key_this_frame = false;
+var use_key_last_frame = false;
+var mouse_down_this_frame = false;
+var mouse_down_last_frame = false;
 
 const test_program = false;
 
@@ -815,12 +810,23 @@ export fn update() void {
     state.frame += 1;
 
     use_key_this_frame = false;
+    mouse_down_this_frame = false;
     show_note_this_frame = null;
 
     updateFarms(); // happens even if you're in the computer
     // technically we shouldn't even need to update them - should be able
     // to calculate them if we just store the u64 frame they were last harvested at
     // [!] should not happen while paused [ or maybe it should, not sure ]
+
+    if(w4.GAMEPAD1.button_down and !use_key_last_frame) {
+        use_key_this_frame = true;
+    }
+    use_key_last_frame = w4.GAMEPAD1.button_down;
+
+    if(w4.MOUSE.buttons.left and !mouse_down_last_frame) {
+        mouse_down_this_frame = true;
+    }
+    mouse_down_last_frame = w4.MOUSE.buttons.left;
 
     if(dev_mode and w4.GAMEPAD2.button_2) {
         // we'll make it so you can press r to bring up a pause menu while in game
@@ -864,10 +870,7 @@ export fn update() void {
                 }
             }
 
-            renderWindow(.{
-                .ul = .{20, 30},
-                .application = .settings,
-            });
+            renderWindow(&state.computer.window);
             // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
             // renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
@@ -951,11 +954,13 @@ const Application = enum {
     settings,
     platformer,
     clicker,
+    none,
     pub fn windowSize(app: Application) w4.Vec2 {
         return switch(app) {
             .settings => .{100, 80},
             .clicker => .{100, 80},
             .platformer => .{100, 80},
+            .none => unreachable,
         };
     }
     pub fn render(app: Application, ul: w4.Vec2) void {
@@ -969,8 +974,6 @@ const Application = enum {
         return switch(app) {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
-                drawText(w4.ctx, "<", .{x1 + 15, y1 + 14}, 0b00);
-                drawText(w4.ctx, ">", .{x1 + 46, y1 + 14}, 0b00);
                 drawText(w4.ctx, state.computer.desktop_background.attribution(), .{x1 + 1, y1 + 28}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
@@ -989,9 +992,17 @@ const Application = enum {
                         );
                     }
                 }
+
+                if(button("<", .{x1 + 14, y1 + 13})) {
+                    state.computer.desktop_background = state.computer.desktop_background.prev();
+                }
+                if(button(">", .{x1 + 45, y1 + 13})) {
+                    state.computer.desktop_background = state.computer.desktop_background.next();
+                }
             },
             .platformer => {},
             .clicker => {},
+            .none => unreachable,
         };
     }
     pub fn title(app: Application) []const u8 {
@@ -999,6 +1010,7 @@ const Application = enum {
             .settings => "Settings",
             .platformer => "Platformer",
             .clicker => "Clicker",
+            .none => unreachable,
         };
     }
 };
@@ -1017,15 +1029,15 @@ fn renderSettings() void {
     // - Photo by Peter Wormstetter on Unsplash
 }
 
-fn renderWindow(window: WindowState) void {
+fn renderWindow(window: *WindowState) void {
+    if(window.application == .none) return;
+
     const ul = window.ul;
     const br = window.ul + window.application.windowSize() + w4.Vec2{2 + 2, 11 + 2};
     const x1 = ul[w4.x];
     const y1 = ul[w4.y];
     const x2 = br[w4.x];
     const y2 = br[w4.y];
-
-    _ = y2;
 
     // or just do the four corner thing where you blit
     // parts of an image and repeat the middle section
@@ -1059,10 +1071,29 @@ fn renderWindow(window: WindowState) void {
 
     // titlebar:
     drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, 0b00);
-    drawText(w4.ctx, "x", .{x2 - 7, y1 + 3}, 0b00);
+    const xbtn_click = button("x", .{x2 - 8, y1 + 2});
 
     // content
     window.application.render(.{x1 + 2, y1 + 11});
+
+    // window close button handle
+    if(xbtn_click) {
+        window.application = .none;
+    }
+}
+
+fn button(text: []const u8, ul: w4.Vec2) bool {
+    const text_w = measureText(text);
+    const br = ul + w4.Vec2{text_w + 2, 7};
+
+    const mpos = w4.MOUSE.pos();
+    const hovering = pointWithin(mpos, ul, br - w4.Vec2{1, 1});
+    if(hovering) {
+        rectULBR(ul, br, 0b11);
+    }
+    drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, 0b00);
+
+    return hovering and mouse_down_this_frame;
 }
 
 const Ball = struct {
@@ -1259,7 +1290,6 @@ const Player = struct {
     on_ground: u8 = 0,
     dash_used: bool = false,
     jump_used: bool = false,
-    down_key_held: bool = false,
     disallow_noise: u8 = 0,
 
     vel_instant_prev: Vec2f = Vec2f{0, 0},
@@ -1385,6 +1415,10 @@ const Player = struct {
 
 const Computer = struct {
     desktop_background: BackgroundImage = .peter_wormstetter,
+    window: WindowState = .{
+        .ul = w4.Vec2{20, 30},
+        .application = .settings,
+    },
 };
 // oh btw it looks like compression is doing extremely bad for those images
 // we'll have to optimize the compression thing to work better there
