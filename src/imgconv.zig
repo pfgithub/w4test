@@ -91,8 +91,7 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
 
     var written_count: i32 = 0;
 
-    const tag = try reader.readBitsNoEof(u8, 8);
-    if(tag != 0b10001000) return error.BadInput;
+    const compress_opts = try CompressOpts.read(&reader);
 
     whlp: while(true) {
         const mode = reader.readBitsNoEof(u1, 1) catch break :whlp;
@@ -101,7 +100,7 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
                 const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
                 const len_len = reader.readBitsNoEof(u1, 1) catch break :whlp;
                 const len = reader.readBitsNoEof(u14, switch(len_len) {
-                    0 => @as(u8, 9),
+                    0 => compress_opts.small_repeat_len,
                     1 => 14,
                 }) catch break :whlp;
                 for(w4.range(len)) |_| {
@@ -128,22 +127,33 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
     if(written_count < size_in[0] * size_in[1]) unreachable;
 }
 
-/// output:
-/// [0b10001000]
-/// []node
-///
-/// type node =
-///   | 0b0 u2 u9
-///   | 0b10 u2 u2 u2
-///   | 0b11 never
-fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]const u8 {
+const CompressOpts = struct {
+    small_repeat_len: u4 = 9,
+
+    pub fn write(opts: CompressOpts, writer: anytype) !void {
+        try writer.writeBits(opts.small_repeat_len, 4);
+    }
+    pub fn read(reader: anytype) !CompressOpts {
+        const small_repeat_len = try reader.readBitsNoEof(u4, 4);
+        return CompressOpts{
+            .small_repeat_len = small_repeat_len,
+        };
+    }
+};
+
+fn maxIntRuntime(x: u8) usize {
+    if (x == 0) return 0;
+    return (@as(usize, 1) << @intCast(u6, x)) - 1;
+}
+
+fn compress2bppOpts(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2, compress_opts: CompressOpts) ![]const u8 {
     var fbs = std.io.fixedBufferStream(data);
     var reader = std.io.bitReader(.Little, fbs.reader());
 
     var al = std.ArrayList(u8).init(alloc);
     var writer = std.io.bitWriter(.Little, al.writer());
 
-    try writer.writeBits(@as(u8, 0b10001000), 8); // settings
+    try compress_opts.write(&writer);
 
     var remains: ?u2 = null;
 
@@ -176,9 +186,9 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
             // if it's a u5 or a u20 or something.
             try writer.writeBits(@as(u1, 0b0), 1);
             try writer.writeBits(value0, 2);
-            if(total <= std.math.maxInt(u9)) {
+            if(total <= maxIntRuntime(compress_opts.small_repeat_len)) {
                 try writer.writeBits(@as(u1, 0), 1);
-                try writer.writeBits(total, 9);
+                try writer.writeBits(total, compress_opts.small_repeat_len);
             }else{
                 try writer.writeBits(@as(u1, 1), 1);
                 try writer.writeBits(total, 14);
@@ -215,6 +225,19 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
     if(written_count < size[0] * size[1]) unreachable;
 
     return al.toOwnedSlice();
+}
+fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]const u8 {
+    var res: ?[]const u8 = null;
+    var small_repeat_len: u4 = 3;
+    while(small_repeat_len < 14) : (small_repeat_len += 1) {
+        const value = try compress2bppOpts(alloc, data, size, .{
+            .small_repeat_len = small_repeat_len,
+        });
+        if(res == null or value.len < res.?.len) {
+            res = value;
+        }
+    }
+    return res.?;
 }
 
 // decompress2bpp(size: …, out_buffer: []u8)
