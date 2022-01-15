@@ -940,6 +940,12 @@ const BackgroundImage = enum {
             .caleb_ralston => @embedFile("backgrounds/Caleb Ralston.png.w4i"),
         };
     }
+    pub fn attribution(bgi: BackgroundImage) []const u8 {
+        return switch(bgi) {
+            .peter_wormstetter => "By Peter Wormstetter\non Unsplash",
+            .caleb_ralston => "By Caleb Ralston\non Unsplash",
+        };
+    }
 
     pub fn next(image: BackgroundImage) BackgroundImage {
         var value = @enumToInt(image);
@@ -998,6 +1004,7 @@ const Application = enum {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
                 drawText(w4.ctx, "<", .{x1 + 15, y1 + 14}, 0b00);
                 drawText(w4.ctx, ">", .{x1 + 46, y1 + 14}, 0b00);
+                drawText(w4.ctx, state.computer.desktop_background.attribution(), .{x1 + 1, y1 + 28}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
