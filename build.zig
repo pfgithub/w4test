@@ -17,6 +17,18 @@ pub fn build(b: *std.build.Builder) void {
     });
     platformer_ui.step.dependOn(&imgconv_artifact.step);
 
+    const all_backgrounds = b.step("bg", "backgrounds");
+    for([_][]const u8{"Peter Wormstetter.png"}) |bg_name| {
+        const desktop_background = b.addSystemCommand(&.{
+            "zig-out/bin/imgconv",
+            b.fmt("src/backgrounds/{s}", .{bg_name}),
+            b.fmt("src/backgrounds/{s}.w4i", .{bg_name}),
+            "--compress",
+        });
+        desktop_background.step.dependOn(&imgconv_artifact.step);
+        all_backgrounds.dependOn(&desktop_background.step);
+    }
+
     const mode = b.standardReleaseOptions();
 
     const lib = b.addSharedLibrary("cart", "src/platformer.zig", .unversioned);
@@ -24,6 +36,7 @@ pub fn build(b: *std.build.Builder) void {
     lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     lib.step.dependOn(&platformer_image.step);
     lib.step.dependOn(&platformer_ui.step);
+    lib.step.dependOn(all_backgrounds);
     lib.import_memory = true;
     lib.initial_memory = 65536;
     lib.max_memory = 65536;

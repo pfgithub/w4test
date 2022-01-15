@@ -80,7 +80,9 @@ fn replaceLevel(ptr: *LevelTex, x: i32, y: i32) void {
 
     img.decompress(
         levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
-        ptr.runtime(),
+        .{chunk_size, chunk_size},
+        ptr.texMut(),
+        .{0, 0},
     ) catch unreachable;
 }
 
@@ -860,49 +862,29 @@ export fn update() void {
     switch(state.game_screen) {
         .computer => {
             if(dev_mode and w4.GAMEPAD2.button_1) {
-                state.computer.desktop_background += 1;
-                state.computer.desktop_background %= 2;
+                state.computer.desktop_background = state.computer.desktop_background.next();
             }
 
-            const x_offset: i32 = if(state.computer.desktop_background == 0) (
-                chunk_count - 4
-            ) else (
-                chunk_count - 2
-            );
-            if(level_ul_x != x_offset or level_ul_y != chunk_count - 2) {
-                level_ul_x = x_offset;
-                level_ul_y = chunk_count - 2;
-                reloadLevels();
-                // oh rather than manual reloadLevels we could probably
-                // just automtaically load whenever needed.
-                // if you zoom out too far it would mess up and start lagging though
-                // - maybe set a max load count of 4 each frame
-                // or
-                // reloadLevels really isn't all that slow
-                // rather than having to have this huge buffer to store frames in (100x100x4)
-                // we could just have a single 160x160 buffer and only fill in the visible parts
+            if(level_ul_x != -5 or level_ul_y != -5) {
+                level_ul_x = -5;
+                level_ul_y = -5;
+                loaded_bg = state.computer.desktop_background;
+
+                img.decompress(loaded_bg.file(), .{160, 160}, level_ul.texMut(), .{0, 0}) catch unreachable;
+                img.decompress(loaded_bg.file(), .{160, 160}, level_ur.texMut(), .{-chunk_size, 0}) catch unreachable;
+                img.decompress(loaded_bg.file(), .{160, 160}, level_bl.texMut(), .{0, -chunk_size}) catch unreachable;
+                img.decompress(loaded_bg.file(), .{160, 160}, level_br.texMut(), .{-chunk_size, -chunk_size}) catch unreachable;
+                // ok if we did some super fancy stuff
+                // we could transition between backgrounds with a sliding effect
+                // like :: mix the palettes and while transitioning, decompress 8 times
+                // each frame
+                // that could be extremely neat i think
+                // also if we keep decompression cheap we could switch
+                // to just keeping one `level_bg` tex and decompressing once here
+                // but four times each frame in-game
             }
 
-            const bg_pos = w4.Vec2{
-                1200 + (@as(i32, state.computer.desktop_background) * 200),
-                1440,
-            };
-
-            w4.PALETTE.* = switch(state.computer.desktop_background) {
-                0 => .{
-                    0x214140,
-                    0x095956,
-                    0x2f8b76,
-                    0x4ea7a1,
-                },
-                1 => .{
-                    0x4e5079,
-                    0x656b9f,
-                    0x9ca1d8,
-                    0xc7caf3,
-                },
-                else => unreachable,
-            };
+            w4.PALETTE.* = state.computer.desktop_background.palette();
             // damn basically any theme works for this image
             // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
 
@@ -910,7 +892,7 @@ export fn update() void {
             while(x < w4.CANVAS_SIZE) : (x += 1) {
                 var y: i32 = 0;
                 while(y < w4.CANVAS_SIZE) : (y += 1) {
-                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + bg_pos));
+                    w4.ctx.set(.{x, y}, getWorldPixelRaw(w4.Vec2{x, y} + w4.Vec2{-5 * chunk_size, -5 * chunk_size}));
                 }
             }
 
@@ -944,6 +926,38 @@ export fn update() void {
 fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
     w4.ctx.rect(ul, br - ul, color);
 }
+
+var loaded_bg: BackgroundImage = .peter_wormstetter;
+
+const BackgroundImage = enum {
+    peter_wormstetter,
+    pub fn next(image: BackgroundImage) BackgroundImage {
+        const value = @enumToInt(image);
+        if(@TypeOf(value) == u0) return image;
+        value +%= 1;
+        value %= std.meta.fields(BackgroundImage).len;
+    }
+    pub fn prev(image: BackgroundImage) BackgroundImage {
+        const value = @enumToInt(image);
+        if(@TypeOf(value) == u0) return image;
+        if(value == 0) {
+            value = std.meta.fields(BackgroundImage).len - 1;
+        }else{
+            value -= 1;
+        }
+    }
+    pub fn palette(bgi: BackgroundImage) [4]u32 {
+        return switch(bgi) {
+            .peter_wormstetter => .{0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3},
+            // .no_permission => .{0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3},
+        };
+    }
+    pub fn file(bgi: BackgroundImage) []const u8 {
+        return switch(bgi) {
+            .peter_wormstetter => @embedFile("backgrounds/Peter Wormstetter.png.w4i"),
+        };
+    }
+};
 
 const Application = enum {
     settings,
@@ -1446,7 +1460,7 @@ const Player = struct {
 };
 
 const Computer = struct {
-    desktop_background: u8 = 0,
+    desktop_background: BackgroundImage = .peter_wormstetter,
 };
 // oh btw it looks like compression is doing extremely bad for those images
 // we'll have to optimize the compression thing to work better there

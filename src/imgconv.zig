@@ -65,38 +65,30 @@ const w4 = @import("wasm4.zig");
 //
 // nice, simple, 1-pass compression and decompression
 
-pub const DecompressionDataRuntime = struct {
-    size: w4.Vec2,
-    data_out: []u8,
-};
-
 pub fn decompressionData(size_0: w4.Vec2) type {
     return struct {
         pub const size = size_0;
         data: [std.math.divCeil(comptime_int, size[0] * size[1] * 2, 8) catch unreachable]u8 = undefined,
-        pub fn runtime(self: *@This()) DecompressionDataRuntime {
-            return .{
-                .data_out = &self.data,
-                .size = size,
-            };
-        }
         pub fn tex(dcd: @This()) w4.Tex(.cons) {
             return w4.Tex(.cons).wrapSlice(&dcd.data, size);
         }
-        pub fn texMut(dcd: *@This()) w4.Tex(.cons) {
-            return w4.Tex(.cons).wrapSlice(&dcd.data, size);
+        pub fn texMut(dcd: *@This()) w4.Tex(.mut) {
+            return w4.Tex(.mut).wrapSlice(&dcd.data, size);
         }
     };
 }
 
-pub fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !void {
+pub fn px(size: w4.Vec2, written_count: i32) w4.Vec2 {
+    const y = @divFloor(written_count, size[w4.x]);
+    const x = @mod(written_count, size[w4.x]);
+    return w4.Vec2{x, y};
+}
+
+pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.mut), offset: w4.Vec2) !void {
     var fbs_in = std.io.fixedBufferStream(compressed_in);
     var reader = std.io.bitReader(.Little, fbs_in.reader());
 
-    var fbs_out = std.io.fixedBufferStream(dcd.data_out);
-    var writer = std.io.bitWriter(.Little, fbs_out.writer());
-
-    var written_count: usize = 0;
+    var written_count: i32 = 0;
 
     const tag = try reader.readBitsNoEof(u8, 8);
     if(tag != 0b10001000) return error.BadInput;
@@ -112,25 +104,23 @@ pub fn decompress(compressed_in: []const u8, dcd: DecompressionDataRuntime) !voi
                     1 => 14,
                 }) catch break :whlp;
                 for(w4.range(len)) |_| {
-                    writer.writeBits(value, 2) catch break :whlp;
+                    tex_out.set(px(size_in, written_count) + offset, value);
                     written_count += 1;
                 }
             },
             1 => {
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
                 written_count += 1;
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
                 written_count += 1;
-                writer.writeBits(reader.readBitsNoEof(u2, 2) catch break :whlp, 2) catch break :whlp;
+                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
                 written_count += 1;
             },
         }
     }
 
-    writer.flushBits() catch {};
-
-    // std.log.debug("decompression read {d}/{d}", .{written_count, dcd.size[0] * dcd.size[1]});
-    if(written_count < dcd.size[0] * dcd.size[1]) unreachable;
+    // std.log.debug("decompression read {d}/{d}", .{written_count, tex_out.size[0] * tex_out.size[1]});
+    if(written_count < tex_out.size[0] * tex_out.size[1]) unreachable;
 }
 
 /// output:
@@ -269,10 +259,10 @@ fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
         0xc6b7be => 0b10,
         0xfafbf6 => 0b11,
 
-        0x4e5079 => 0b01, // !!
+        0x4e5079 => 0b00, // !!
         0x656b9f => 0b01, // !!
         0x9ca1d8 => 0b10, // !!
-        0xc7caf3 => 0b10, // !!
+        0xc7caf3 => 0b11, // !!
 
         0x214140 => 0b01, // !!
         0x095956 => 0b10, // !!
@@ -307,10 +297,7 @@ fn expectEqualImages(expected: []const u8, data: []const u8, size: w4.Vec2) !voi
 pub fn verifyCompression(alloc: std.mem.Allocator, expected: []const u8, compressed: []const u8, size: w4.Vec2) !void {
     const data = alloc.alloc(u8, expected.len) catch @panic("oom");
     for(data) |*v| v.* = 0b01;
-    try decompress(compressed, .{
-        .size = size,
-        .data_out = data,
-    });
+    try decompress(compressed, size, w4.Tex(.mut).wrapSlice(data, size), .{0, 0});
 
     try expectEqualImages(expected, data, size);
 }
