@@ -914,6 +914,10 @@ export fn update() void {
                 }
             }
 
+            renderWindow(.{
+                .ul = .{20, 30},
+                .application = .settings,
+            });
             // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
             // renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
@@ -944,18 +948,56 @@ fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
 const Application = enum {
     settings,
     platformer,
+    clicker,
+    pub fn windowSize(app: Application) w4.Vec2 {
+        return switch(app) {
+            .settings => .{100, 80},
+            .clicker => .{100, 80},
+            .platformer => .{100, 80},
+        };
+    }
+    pub fn render(app: Application, ul: w4.Vec2) void {
+        const x1 = ul[w4.x];
+        const y1 = ul[w4.y];
+        const br = ul + app.windowSize();
+        const x2 = br[w4.x];
+        const y2 = br[w4.y];
+        _ = x2;
+        _ = y2;
+        return switch(app) {
+            .settings => {
+                drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
+            },
+            .platformer => {},
+            .clicker => {},
+        };
+    }
+    pub fn title(app: Application) []const u8 {
+        return switch(app) {
+            .settings => "Settings",
+            .platformer => "Platformer",
+            .clicker => "Clicker",
+        };
+    }
 };
 const WindowState = struct {
     application: Application,
     ul: w4.Vec2,
-    br: w4.Vec2,
 };
 fn renderSettings() void {
     // show a palette switcher or smth
     // desktop background picker
+
+    // attribution:
+    // house image:
+    // - I don't know if I have permission to use this one, consider deleting
+    // road image:
+    // - Photo by Peter Wormstetter on Unsplash
 }
 
-fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
+fn renderWindow(window: WindowState) void {
+    const ul = window.ul;
+    const br = window.ul + window.application.windowSize() + w4.Vec2{2 + 2, 11 + 2};
     const x1 = ul[w4.x];
     const y1 = ul[w4.y];
     const x2 = br[w4.x];
@@ -994,16 +1036,11 @@ fn renderWindow(ul: w4.Vec2, br: w4.Vec2, title: []const u8) void {
     // === these should be rendered by the window ===
 
     // titlebar:
-    drawText(w4.ctx, title, .{x1 + 3, y1 + 3}, 0b00);
+    drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, 0b00);
     drawText(w4.ctx, "x", .{x2 - 7, y1 + 3}, 0b00);
 
     // content
-    drawText(w4.ctx,
-        \\Welcome to platformer!
-        \\
-        \\Do you agree to the EULA?
-        \\If you do not, too bad.
-    , .{x1 + 3, y1 + 12}, 0b00);
+    window.application.render(.{x1 + 2, y1 + 11});
 }
 
 const Ball = struct {
