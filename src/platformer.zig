@@ -937,7 +937,7 @@ const BackgroundImage = enum {
     pub fn fileRaw(bgi: BackgroundImage) []const u8 {
         return switch(bgi) {
             .peter_wormstetter => @embedFile("backgrounds/Peter Wormstetter.png.w4i"),
-            .caleb_ralston => @embedFile("backgrounds/Caleb Ralston.jpg.w4i"),
+            .caleb_ralston => @embedFile("backgrounds/Caleb Ralston.png.w4i"),
         };
     }
 
