@@ -4,6 +4,7 @@ const c = @cImport({
 });
 const std = @import("std");
 const w4 = @import("wasm4.zig");
+const colr = @import("color.zig");
 
 // TODO: support 1bpp, 2bpp, specifying colors, and basic compression
 
@@ -218,10 +219,16 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
 //     const value = reader.readBits(u1);
 // }
 
-fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
-    const pixel = image[(y * w + x) * 3..][0..3];
-    const px_color = @as(u32, pixel[0]) << 16 | @as(u32, pixel[1]) << 8 | @as(u32, pixel[2]);
-    return switch(px_color) {
+fn hexToColor(hex: u32, palette: ?[4]u32) u2 {
+    if(palette) |palet| {
+        for(palet) |color, i| {
+            if(luminanceEql(hex, color)) return @intCast(u2, i);
+        }
+        std.log.err("Color {x:0>6} not found in palette", .{hex});
+        std.process.exit(1);
+    }
+
+    return switch(hex) {
         0x000000 => @as(u2, 0b00),
         0x525252 => 0b01,
         0xADADAD => 0b10,
@@ -259,21 +266,17 @@ fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u2 {
         0xc6b7be => 0b10,
         0xfafbf6 => 0b11,
 
-        0x4e5079 => 0b00, // !!
-        0x656b9f => 0b01, // !!
-        0x9ca1d8 => 0b10, // !!
-        0xc7caf3 => 0b11, // !!
-
-        0x214140 => 0b01, // !!
-        0x095956 => 0b10, // !!
-        0x2f8b76 => 0b10, // !!
-        0x4ea7a1 => 0b10, // !!
-
         else => {
-            std.log.err("Unknown color {x:0>6}", .{px_color});
+            std.log.err("Unknown color {x:0>6}", .{hex});
             std.process.exit(1);
         },
     };
+}
+
+fn getPixel(image: []const u8, x: usize, y: usize, w: usize) u32 {
+    const pixel = image[(y * w + x) * 3..][0..3];
+    const px_color = @as(u32, pixel[0]) << 16 | @as(u32, pixel[1]) << 8 | @as(u32, pixel[2]);
+    return px_color;
 }
 
 fn expectEqualImages(expected: []const u8, data: []const u8, size: w4.Vec2) !void {
@@ -307,8 +310,29 @@ pub fn range(len: usize) []const void {
 }
 
 const Opts = struct {
-    compress: bool,
+    compress: bool = false,
+    detect_palette: bool = false,
 };
+
+fn luminanceOf(a: u32) f32 {
+    return colr.hexToHsl(a)[2];
+}
+
+fn luminanceEql(a: u32, b: u32) bool {
+    const l_a = luminanceOf(a);
+    const l_b = luminanceOf(b);
+    // comptime @compileLog(luminanceOf(0x130c11) * 255, luminanceOf(0x150f11) * 255, 4.0);
+    return std.math.fabs(l_a - l_b) < 4.0 / 255.0;
+}
+
+fn insertSorted(all_colors: *std.ArrayList(u32), color: u32) !void {
+    const i = for(all_colors.items) |item, i| {
+        if(luminanceEql(item, color)) return; // no double insert
+        if(luminanceOf(item) > luminanceOf(color)) break i;
+    } else all_colors.items.len;
+
+    try all_colors.insert(i, color);
+}
 
 pub fn processSubimage(
     alloc: std.mem.Allocator,
@@ -325,30 +349,66 @@ pub fn processSubimage(
         @intCast(i32, ul_h),
     };
 
+    var palette: ?[4]u32 = null;
+
+    if(opts.detect_palette) {
+        var all_colors = std.ArrayList(u32).init(alloc);
+        for(range(ul_h)) |_, y| {
+            for(range(ul_w)) |_, x| {
+                const pixel = getPixel(image, x + ul_x, y + ul_y, @intCast(usize, size[w4.x]));
+                try insertSorted(&all_colors, pixel);
+            }
+        }
+        if(all_colors.items.len != 4) {
+            // 1. reduce to four colors
+            // 2. modify the image to use the reduced palette
+
+            std.log.err("Too many colors: {x}", .{all_colors.items});
+            // TODO pick the middle one of each luminance section
+            std.process.exit(1);
+        }
+
+        palette = all_colors.items[0..4].*;
+    }
+
     for(range(ul_h)) |_, y| {
         for(range(ul_w)) |_, x| {
             const pixel = getPixel(image, x + ul_x, y + ul_y, @intCast(usize, size[w4.x]));
-            try bit_stream_be.writeBits(pixel, 2);
+            try bit_stream_be.writeBits(hexToColor(pixel, palette), 2);
         }
     }
     try bit_stream_be.flushBits();
 
-    if(!opts.compress) return al.toOwnedSlice();
+    var result: []const u8 = al.items;
 
-    const compressed = try compress2bpp(alloc, al.items, subsize);
-    try verifyCompression(alloc, al.items, compressed, subsize);
+    if(opts.compress) {
+        const compressed = try compress2bpp(alloc, al.items, subsize);
+        try verifyCompression(alloc, al.items, compressed, subsize);
+        
+        if(compressed.len > al.items.len + 1) {
+            std.log.warn("Compressed image is larger than original. Original: {d}, Compressed: {d}", .{al.items.len + 1, compressed.len});
+            // TODO: use the original image with a special header directly instead of compressing it
+        }
 
-    // std.log.info("- chunk {},{}: {:.2} ({d:0.2}%) → {:.2} ({d:0.2}%)", .{
-    //     ul_x, ul_y,
+        result = compressed;
+    }
+    
+    if(palette) |palet| {
+        var resdupe = try alloc.alloc(u8, result.len + (@sizeOf(u32) * 4));
+        std.mem.copy(u8, resdupe[@sizeOf(u32) * 4..], result);
+        var bit_stream_w = std.io.bitWriter(.Little, std.io.fixedBufferStream(resdupe).writer());
 
-    //     std.fmt.fmtIntSizeBin(al.items.len),
-    //     @intToFloat(f64, al.items.len) / (64.0 * 1024.0) * 100,
+        try bit_stream_w.writeBits(palet[0], 32);
+        try bit_stream_w.writeBits(palet[1], 32);
+        try bit_stream_w.writeBits(palet[2], 32);
+        try bit_stream_w.writeBits(palet[3], 32);
 
-    //     std.fmt.fmtIntSizeBin(compressed.len),
-    //     @intToFloat(f64, compressed.len) / (64.0 * 1024.0) * 100,
-    // });
+        if(bit_stream_w.bit_count != 0) unreachable;
 
-    return compressed;
+        result = resdupe;
+    }
+
+    return result;
 }
 
 const sb_t = 16;
@@ -365,17 +425,19 @@ pub fn main() !void {
     var src_file: ?[:0]const u8 = null;
     var dest_file: ?[:0]const u8 = null;
     var sb16x16_100x100 = false;
-    var compress = false;
+    var opts = Opts{};
 
     for(args[1..]) |arg| {
         if(std.mem.startsWith(u8, arg, "-")) {
             if(std.mem.eql(u8, arg, "--splitby=16x16-100x100")) {
                 sb16x16_100x100 = true;
             }else if(std.mem.eql(u8, arg, "--compress")) {
-                compress = true;
+                opts.compress = true;
+            }else if(std.mem.eql(u8, arg, "--detect-palette")) {
+                opts.detect_palette = true;
             }else{
                 std.log.err("unknown arg", .{});
-                std.process.exit(0);
+                std.process.exit(1);
             }
             continue;
         }
@@ -421,7 +483,7 @@ pub fn main() !void {
         var items = std.ArrayList([]const u8).init(alloc);
         for(range(sb_t)) |_, y_block| {
             for(range(sb_t)) |_, x_block| {
-                try items.append(try processSubimage(alloc, image_data, x_block * sb_s, y_block * sb_s, sb_s, sb_s, total_size, .{.compress = compress}));
+                try items.append(try processSubimage(alloc, image_data, x_block * sb_s, y_block * sb_s, sb_s, sb_s, total_size, opts));
             }
         }
         var index: u32 = 0;
@@ -436,7 +498,7 @@ pub fn main() !void {
             try final.appendSlice(item);
         }
     }else{
-        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, total_size, .{.compress = compress}));
+        try final.appendSlice(try processSubimage(alloc, image_data, 0, 0, w, h, total_size, opts));
     }
 
     try std.fs.cwd().writeFile(dest_file.?, final.items);

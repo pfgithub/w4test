@@ -18,12 +18,13 @@ pub fn build(b: *std.build.Builder) void {
     platformer_ui.step.dependOn(&imgconv_artifact.step);
 
     const all_backgrounds = b.step("bg", "backgrounds");
-    for([_][]const u8{"Peter Wormstetter.png"}) |bg_name| {
+    for([_][]const u8{"Peter Wormstetter.png", "Caleb Ralston.jpg"}) |bg_name| {
         const desktop_background = b.addSystemCommand(&.{
             "zig-out/bin/imgconv",
             b.fmt("src/backgrounds/{s}", .{bg_name}),
             b.fmt("src/backgrounds/{s}.w4i", .{bg_name}),
             "--compress",
+            "--detect-palette",
         });
         desktop_background.step.dependOn(&imgconv_artifact.step);
         all_backgrounds.dependOn(&desktop_background.step);

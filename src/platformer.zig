@@ -34,6 +34,7 @@
 const std = @import("std");
 const w4 = @import("wasm4.zig");
 const img = @import("imgconv.zig");
+const colr = @import("color.zig");
 
 const dev_mode = switch(@import("builtin").mode) {
     .Debug => true,
@@ -865,7 +866,7 @@ export fn update() void {
                 state.computer.desktop_background = state.computer.desktop_background.next();
             }
 
-            if(level_ul_x != -5 or level_ul_y != -5) {
+            if(level_ul_x != -5 or level_ul_y != -5 or loaded_bg != state.computer.desktop_background) {
                 level_ul_x = -5;
                 level_ul_y = -5;
                 loaded_bg = state.computer.desktop_background;
@@ -931,31 +932,45 @@ var loaded_bg: BackgroundImage = .peter_wormstetter;
 
 const BackgroundImage = enum {
     peter_wormstetter,
+    caleb_ralston,
+
+    pub fn fileRaw(bgi: BackgroundImage) []const u8 {
+        return switch(bgi) {
+            .peter_wormstetter => @embedFile("backgrounds/Peter Wormstetter.png.w4i"),
+            .caleb_ralston => @embedFile("backgrounds/Caleb Ralston.jpg.w4i"),
+        };
+    }
+
     pub fn next(image: BackgroundImage) BackgroundImage {
-        const value = @enumToInt(image);
+        var value = @enumToInt(image);
         if(@TypeOf(value) == u0) return image;
         value +%= 1;
-        value %= std.meta.fields(BackgroundImage).len;
+        if(std.meta.fields(BackgroundImage).len < std.math.maxInt(@TypeOf(value))) {
+            value %= @as(comptime_int, std.meta.fields(BackgroundImage).len);
+        }
+        return @intToEnum(BackgroundImage, value);
     }
     pub fn prev(image: BackgroundImage) BackgroundImage {
-        const value = @enumToInt(image);
+        var value = @enumToInt(image);
         if(@TypeOf(value) == u0) return image;
         if(value == 0) {
-            value = std.meta.fields(BackgroundImage).len - 1;
+            value = @as(comptime_int, std.meta.fields(BackgroundImage).len - 1);
         }else{
             value -= 1;
         }
+        return @intToEnum(BackgroundImage, value);
     }
     pub fn palette(bgi: BackgroundImage) [4]u32 {
-        return switch(bgi) {
-            .peter_wormstetter => .{0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3},
-            // .no_permission => .{0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3},
+        const value = bgi.fileRaw()[0..@sizeOf(u32) * 4];
+        return .{
+            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
         };
     }
     pub fn file(bgi: BackgroundImage) []const u8 {
-        return switch(bgi) {
-            .peter_wormstetter => @embedFile("backgrounds/Peter Wormstetter.png.w4i"),
-        };
+        return bgi.fileRaw()[@sizeOf(u32) * 4..];
     }
 };
 
@@ -1248,97 +1263,12 @@ fn magnitude(vec: Vec2f) f32 {
     return @sqrt(vec[w4.x] * vec[w4.x] + vec[w4.y] * vec[w4.y]);
 }
 
-fn rgbToHsl(rgb: [3]u8) [3]f32 {
-    var r = @intToFloat(f32, rgb[0]) / 255;
-    var g = @intToFloat(f32, rgb[1]) / 255;
-    var b = @intToFloat(f32, rgb[2]) / 255;
-    return .{r, g, b};
-
-    // var max = @maximum(@maximum(r, g), b);
-    // var min = @minimum(@minimum(r, g), b);
-
-    // var h = (max + min) / 2;
-    // var s = (max + min) / 2;
-    // var l = (max + min) / 2;
-
-    // if(max == min) {
-    //     h = 0;
-    //     s = 0;
-    // }else{
-    //     var d = max - min;
-    //     s = if(l > 0.5) d / (2.0 - max - min) else d / (max + min);
-    //     if(max == r) {
-    //         h = (g - b) / d + if(g < b) @as(f32, 6) else 0;
-    //     }else if(max == g) {
-    //         h = (b - r) / d + 2;
-    //     }else if(max == b) {
-    //         h = (r - g) / d + 4;
-    //     }else unreachable;
-    //     h /= 6;
-    // }
-
-    // return .{h, s, l};
-}
-fn interpolate(a: f32, b: f32, t: f32) f32 {
-    return a * (1 - t) + b * t;
-}
-fn hslInterpolate(a: [3]f32, b: [3]f32, t: f32) [3]f32 {
-    return .{
-        interpolate(a[0], b[0], t),
-        interpolate(a[1], b[1], t),
-        interpolate(a[2], b[2], t),
-    };
-}
-fn hslToRgb(hsl: [3]f32) [3]u8 {
-    return .{
-        std.math.lossyCast(u8, hsl[0] * 255),
-        std.math.lossyCast(u8, hsl[1] * 255),
-        std.math.lossyCast(u8, hsl[2] * 255),
-    };
-    // if(hsl[1] == 0) {
-    //     return .{
-    //         std.math.lossyCast(u8, hsl[2] * 255),
-    //         std.math.lossyCast(u8, hsl[2] * 255),
-    //         std.math.lossyCast(u8, hsl[2] * 255),
-    //     };
-    // }else{
-    //     var q = if(hsl[2] < 0.5) hsl[2] * (1.0 + hsl[1]) else hsl[2] + hsl[1] - hsl[2] * hsl[1];
-    //     var p = 2.0 * hsl[2] - q;
-    //     var r = hslToRgbHelper(p, q, hsl[0] + 1.0 / 3.0);
-    //     var g = hslToRgbHelper(p, q, hsl[0]);
-    //     var b = hslToRgbHelper(p, q, hsl[0] - 1.0 / 3.0);
-    //     return .{
-    //         std.math.lossyCast(u8, r * 255),
-    //         std.math.lossyCast(u8, g * 255),
-    //         std.math.lossyCast(u8, b * 255),
-    //     };
-    // }
-}
-fn hslToRgbHelper(p: f32, q: f32, t_0: f32) f32 {
-    var t = t_0;
-    if(t < 0) t += 1;
-    if(t > 1) t -= 1;
-    if(t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
-    if(t < 1.0 / 2.0) return q;
-    if(t < 2.0 / 3.0) return p + (q - p) * (2/3 - t) * 6;
-    return p;
-}
-fn hexToRgb(hex: u32) [3]u8 {
-    return .{
-        @intCast(u8, hex >> 16 & 0xFF),
-        @intCast(u8, hex >> 8 & 0xFF),
-        @intCast(u8, hex & 0xFF),
-    };
-}
-fn rgbToHex(rgb: [3]u8) u32 {
-    return @as(u32, rgb[0]) << 16 | @as(u32, rgb[1]) << 8 | @as(u32, rgb[2]);
-}
 fn themeMix(a: [4]u32, b: [4]u32, t: f32) [4]u32 {
     return .{
-        rgbToHex(hslToRgb(hslInterpolate(rgbToHsl(hexToRgb(a[0])), rgbToHsl(hexToRgb(b[0])), t))),
-        rgbToHex(hslToRgb(hslInterpolate(rgbToHsl(hexToRgb(a[1])), rgbToHsl(hexToRgb(b[1])), t))),
-        rgbToHex(hslToRgb(hslInterpolate(rgbToHsl(hexToRgb(a[2])), rgbToHsl(hexToRgb(b[2])), t))),
-        rgbToHex(hslToRgb(hslInterpolate(rgbToHsl(hexToRgb(a[3])), rgbToHsl(hexToRgb(b[3])), t))),
+        colr.hexInterpolate(a[0], b[0], t),
+        colr.hexInterpolate(a[1], b[1], t),
+        colr.hexInterpolate(a[2], b[2], t),
+        colr.hexInterpolate(a[3], b[3], t),
     };
 }
 
