@@ -939,7 +939,7 @@ const BackgroundImage = struct {
     pub fn from(comptime author: []const u8, file_raw: []const u8) BackgroundImage {
         const value = file_raw[0..@sizeOf(u32) * 4];
         return .{
-            .attribution = "By "++author++"\non Unsplash", // TODO don't do this
+            .attribution = author, // TODO don't do this
             .file = file_raw[@sizeOf(u32) * 4..],
             .palette = .{
                 std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
@@ -951,8 +951,10 @@ const BackgroundImage = struct {
     }
 };
 const all_backgrounds = [_]BackgroundImage{
-    BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
+    // BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
     BackgroundImage.from("Caleb Ralston", @embedFile("backgrounds/Caleb Ralston.png.w4i")),
+    BackgroundImage.from("Ales Krivec", @embedFile("backgrounds/Ales Krivec.jpg.w4i")),
+    BackgroundImage.from("Blake Verdoorn", @embedFile("backgrounds/Blake Verdoorn.jpg.w4i")),
 };
 
 const Application = enum {
@@ -979,7 +981,8 @@ const Application = enum {
         return switch(app) {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
-                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 1, y1 + 28}, 0b00);
+                drawText(w4.ctx, "By\non Unsplash", .{x1 + 1, y1 + 28}, 0b00);
+                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 11, y1 + 28}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
@@ -1098,7 +1101,8 @@ fn renderWindow(window: *WindowState) void {
 
     // window close button handle
     if(xbtn_click) {
-        window.application = .none;
+        // window.application = .none;
+        // TODO: disabled for now
     }
 
     // window drag handle
@@ -1115,6 +1119,14 @@ fn renderWindow(window: *WindowState) void {
     if(window.dragging) {
         window.ul += mpos - mouse_last_frame.pos();
     }
+    const max_pos = w4.Vec2{w4.CANVAS_SIZE - 4, w4.CANVAS_SIZE - 4};
+    if(window.ul[w4.x] > max_pos[w4.x]) window.ul[w4.x] = max_pos[w4.x];
+    if(window.ul[w4.y] > max_pos[w4.y]) window.ul[w4.y] = max_pos[w4.y];
+    // window.ul = @minimum(ul, max_pos);
+    const min_pos = w4.Vec2{-x2, 0};
+    if(window.ul[w4.x] < min_pos[w4.x]) window.ul[w4.x] = min_pos[w4.x];
+    if(window.ul[w4.y] < min_pos[w4.y]) window.ul[w4.y] = min_pos[w4.y];
+    // window.ul = @maximum(ul, min_pos);
 }
 
 fn button(text: []const u8, ul: w4.Vec2) bool {
