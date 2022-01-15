@@ -840,10 +840,6 @@ export fn update() void {
 
     switch(state.game_screen) {
         .computer => {
-            if(dev_mode and w4.GAMEPAD2.button_1) {
-                state.computer.desktop_background = state.computer.desktop_background.next();
-            }
-
             if(Computer.bg_transition_start != 0) {
                 level_ul_x = -10;
                 level_ul_y = -10;
@@ -858,12 +854,12 @@ export fn update() void {
                     shx = 160 - shx - 160;
                 }
 
-                img.decompress(Computer.bg_transition_from.file(), .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
-                img.decompress(state.computer.desktop_background.file(), .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
+                img.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
+                img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
 
                 w4.PALETTE.* = themeMix(
-                    Computer.bg_transition_from.palette(),
-                    state.computer.desktop_background.palette(),
+                    all_backgrounds[Computer.bg_transition_from].palette,
+                    all_backgrounds[state.computer.desktop_background].palette,
                     time,
                 );
 
@@ -876,7 +872,7 @@ export fn update() void {
                     level_ul_y = -5;
                     loaded_bg = state.computer.desktop_background;
 
-                    img.decompress(loaded_bg.file(), .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
+                    img.decompress(all_backgrounds[loaded_bg].file, .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
                     // ok if we did some super fancy stuff
                     // we could transition between backgrounds with a sliding effect
                     // like :: mix the palettes and while transitioning, decompress 8 times
@@ -887,7 +883,7 @@ export fn update() void {
                     // but four times each frame in-game
                 }
 
-                w4.PALETTE.* = state.computer.desktop_background.palette();
+                w4.PALETTE.* = all_backgrounds[state.computer.desktop_background].palette;
             }
 
             // damn basically any theme works for this image
@@ -933,58 +929,30 @@ fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
     w4.ctx.rect(ul, br - ul, color);
 }
 
-var loaded_bg: BackgroundImage = BackgroundImage.default;
+var loaded_bg: u8 = 0;
 
-const BackgroundImage = enum {
-    pub const default = BackgroundImage.peter_wormstetter;
+const BackgroundImage = struct {
+    attribution: []const u8,
+    file: []const u8,
+    palette: [4]u32,
 
-    peter_wormstetter,
-    caleb_ralston,
-
-    pub fn fileRaw(bgi: BackgroundImage) []const u8 {
-        return switch(bgi) {
-            .peter_wormstetter => @embedFile("backgrounds/Peter Wormstetter.png.w4i"),
-            .caleb_ralston => @embedFile("backgrounds/Caleb Ralston.png.w4i"),
-        };
-    }
-    pub fn attribution(bgi: BackgroundImage) []const u8 {
-        return switch(bgi) {
-            .peter_wormstetter => "By Peter Wormstetter\non Unsplash",
-            .caleb_ralston => "By Caleb Ralston\non Unsplash",
-        };
-    }
-
-    pub fn next(image: BackgroundImage) BackgroundImage {
-        var value = @enumToInt(image);
-        if(@TypeOf(value) == u0) return image;
-        value +%= 1;
-        if(std.meta.fields(BackgroundImage).len < std.math.maxInt(@TypeOf(value))) {
-            value %= @as(comptime_int, std.meta.fields(BackgroundImage).len);
-        }
-        return @intToEnum(BackgroundImage, value);
-    }
-    pub fn prev(image: BackgroundImage) BackgroundImage {
-        var value = @enumToInt(image);
-        if(@TypeOf(value) == u0) return image;
-        if(value == 0) {
-            value = @as(comptime_int, std.meta.fields(BackgroundImage).len - 1);
-        }else{
-            value -= 1;
-        }
-        return @intToEnum(BackgroundImage, value);
-    }
-    pub fn palette(bgi: BackgroundImage) [4]u32 {
-        const value = bgi.fileRaw()[0..@sizeOf(u32) * 4];
+    pub fn from(comptime author: []const u8, file_raw: []const u8) BackgroundImage {
+        const value = file_raw[0..@sizeOf(u32) * 4];
         return .{
-            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
-            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
-            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
-            std.mem.bytesToValue(u32, value[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
+            .attribution = "By "++author++"\non Unsplash", // TODO don't do this
+            .file = file_raw[@sizeOf(u32) * 4..],
+            .palette = .{
+                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
+                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
+                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
+                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
+            },
         };
     }
-    pub fn file(bgi: BackgroundImage) []const u8 {
-        return bgi.fileRaw()[@sizeOf(u32) * 4..];
-    }
+};
+const all_backgrounds = [_]BackgroundImage{
+    BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
+    BackgroundImage.from("Caleb Ralston", @embedFile("backgrounds/Caleb Ralston.png.w4i")),
 };
 
 const Application = enum {
@@ -1011,7 +979,7 @@ const Application = enum {
         return switch(app) {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
-                drawText(w4.ctx, state.computer.desktop_background.attribution(), .{x1 + 1, y1 + 28}, 0b00);
+                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 1, y1 + 28}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
@@ -1032,13 +1000,18 @@ const Application = enum {
 
                 if(button("<", .{x1 + 14, y1 + 13})) {
                     Computer.bg_transition_from = state.computer.desktop_background;
-                    state.computer.desktop_background = state.computer.desktop_background.prev();
+                    if(state.computer.desktop_background == 0) {
+                        state.computer.desktop_background = all_backgrounds.len - 1;
+                    }else{
+                        state.computer.desktop_background -= 1;
+                    }
                     Computer.bg_transition_dir = 0;
                     Computer.bg_transition_start = state.frame;
                 }
                 if(button(">", .{x1 + 45, y1 + 13})) {
                     Computer.bg_transition_from = state.computer.desktop_background;
-                    state.computer.desktop_background = state.computer.desktop_background.next();
+                    state.computer.desktop_background += 1;
+                    state.computer.desktop_background %= @as(comptime_int, all_backgrounds.len);
                     Computer.bg_transition_dir = 1;
                     Computer.bg_transition_start = state.frame;
                 }
@@ -1480,10 +1453,10 @@ const Player = struct {
 };
 
 const Computer = struct {
-    var bg_transition_from: BackgroundImage = BackgroundImage.default;
+    var bg_transition_from: u8 = 0;
     var bg_transition_start: u64 = 0;
     var bg_transition_dir: u1 = 0;
-    desktop_background: BackgroundImage = BackgroundImage.default,
+    desktop_background: u8 = 0,
     window: WindowState = .{
         .ul = w4.Vec2{20, 30},
         .application = .settings,
