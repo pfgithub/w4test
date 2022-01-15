@@ -981,6 +981,25 @@ const Application = enum {
         return switch(app) {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
+                drawText(w4.ctx, "<", .{x1 + 15, y1 + 14}, 0b00);
+                drawText(w4.ctx, ">", .{x1 + 46, y1 + 14}, 0b00);
+                w4.DRAW_COLORS.* = 0x10;
+                w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
+
+                const mini_bg_sz = 18;
+                var x: i32 = 0;
+                while(x < mini_bg_sz) : (x += 1) {
+                    var y: i32 = 0;
+                    while(y < mini_bg_sz) : (y += 1) {
+                        w4.ctx.set(
+                            .{x1 + 23 + x, y1 + 8 + y},
+                            getWorldPixelRaw(w4.Vec2{
+                                @divFloor(x * w4.CANVAS_SIZE, mini_bg_sz),
+                                @divFloor(y * w4.CANVAS_SIZE, mini_bg_sz),
+                            } + w4.Vec2{-5 * chunk_size, -5 * chunk_size}),
+                        );
+                    }
+                }
             },
             .platformer => {},
             .clicker => {},
@@ -1141,6 +1160,7 @@ fn getCharPos(char: u21) CharPos {
         ')' => return .{6, 3},
         '!' => return .{7, 3},
         ',' => return .{8, 3},
+        '<'...'>' => return .{9 + char - '<', 3},
         else => return .{3, 3},
     }
 }
