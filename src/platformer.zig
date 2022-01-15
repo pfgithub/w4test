@@ -914,8 +914,8 @@ export fn update() void {
                 }
             }
 
-            renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
-            renderWindow(.{20, 30}, .{150, 120}, "Settings");
+            // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
+            // renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
         .platformer => {
             updateLoaded();
