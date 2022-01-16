@@ -117,13 +117,13 @@ pub const ctx = Tex(.mut){
 };
 
 pub const Gamepad = packed struct {
-    button_1: bool,
-    button_2: bool,
+    button_1: bool = false,
+    button_2: bool = false,
     _: u2 = 0,
-    button_left: bool,
-    button_right: bool,
-    button_up: bool,
-    button_down: bool,
+    button_left: bool = false,
+    button_right: bool = false,
+    button_up: bool = false,
+    button_down: bool = false,
     comptime {
         if (@sizeOf(@This()) != @sizeOf(u8)) unreachable;
     }

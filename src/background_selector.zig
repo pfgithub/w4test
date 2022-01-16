@@ -35,6 +35,7 @@ const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80
 var mouse_down_this_frame = false;
 
 var mouse_last_frame: w4.Mouse = w4.Mouse{};
+var gp1_last_frame: w4.Gamepad = w4.Gamepad{};
 
 var rerender = true;
 
@@ -42,6 +43,7 @@ export fn update() void {
     state.frame += 1;
 
     defer mouse_last_frame = w4.MOUSE.*;
+    defer gp1_last_frame = w4.GAMEPAD1.*;
 
     mouse_down_this_frame = false;
     if(w4.MOUSE.buttons.left and !mouse_last_frame.buttons.left) {
@@ -85,25 +87,27 @@ export fn update() void {
     // damn basically any theme works for this image
     // w4.PALETTE.* = color_themes[@intCast(usize, (state.frame / 60) % 12)];
 
-    renderWindow(&state.computer.window);
+    // renderWindow(&state.computer.window);
 
-    // const attrb = all_backgrounds[state.computer.desktop_background].attribution;
-    // const text_len = measureText(attrb);
-    //
-    // x = 0;
-    // while(x < text_len + 2) : (x += 1) {
-    //     var y: i32 = 0;
-    //     while(y < 7) : (y += 1) {
-    //         const px = w4.ctx.get(.{x, y});
-    //         if(px <= 0b01) {
-    //             w4.ctx.set(.{x, y}, 0b11);
-    //         }
-    //     }
-    // }
-    // drawText(w4.ctx, attrb, .{1, 1}, 0b00);
-    //
-    // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
-    // renderWindow(.{20, 30}, .{150, 120}, "Settings");
+    const attrb = all_backgrounds[state.computer.desktop_background].attribution;
+    const text_len = measureText(attrb);
+    const left = @divFloor(160 - (text_len + 6), 2);
+
+    w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, 0b11);
+    drawText(w4.ctx, attrb, .{left + 3, 1}, 0b00);
+
+    if(w4.GAMEPAD1.button_left and !gp1_last_frame.button_left) {
+        prevBg();
+    }
+    if(w4.GAMEPAD1.button_right and !gp1_last_frame.button_right) {
+        nextBg();
+    }
+    if(button(" < ", w4.Vec2{0, 0})) {
+        prevBg();
+    }
+    if(button(" > ", w4.Vec2{160 - 2 - 3 - 3 - 3, 0})) {
+        nextBg();
+    }
 }
 
 fn easeInOut(t: f32) f32 {
@@ -179,151 +183,24 @@ const all_backgrounds = [_]BackgroundImage{
     // nope // BackgroundImage.from("Nobody", @embedFile("backgrounds/Nobody.png.w4i")),
 };
 
-const Application = enum {
-    image_viewer,
-    pub fn windowSize(app: Application) w4.Vec2 {
-        return switch(app) {
-            .image_viewer => .{80, 21},
-        };
+fn prevBg() void {
+    Computer.bg_transition_from = state.computer.desktop_background;
+    if(state.computer.desktop_background == 0) {
+        state.computer.desktop_background = all_backgrounds.len - 1;
+    }else{
+        state.computer.desktop_background -= 1;
     }
-    pub fn render(app: Application, ul: w4.Vec2) void {
-        const x1 = ul[w4.x];
-        const y1 = ul[w4.y];
-        const br = ul + app.windowSize();
-        const x2 = br[w4.x];
-        const y2 = br[w4.y];
-        _ = x2;
-        _ = y2;
-        return switch(app) {
-            .image_viewer => {
-                const offset: w4.Vec2 = .{6, -7};
-
-                w4.DRAW_COLORS.* = 0x10;
-                w4.rect(w4.Vec2{x1 + 22, y1 + 7} + offset, .{20, 20});
-
-                // const mini_bg_sz = 18;
-                // var x: i32 = 0;
-                // while(x < mini_bg_sz) : (x += 1) {
-                //     var y: i32 = 0;
-                //     while(y < mini_bg_sz) : (y += 1) {
-                //         w4.ctx.set(
-                //             w4.Vec2{x1 + 23 + x, y1 + 8 + y} + offset,
-                //             level_tex.tex().get(w4.Vec2{
-                //                 @divFloor(x * w4.CANVAS_SIZE, mini_bg_sz),
-                //                 @divFloor(y * w4.CANVAS_SIZE, mini_bg_sz),
-                //             }),
-                //         );
-                //     }
-                // }
-                // TODO
-
-                if(button("<", w4.Vec2{x1 + 14, y1 + 13} + offset)) {
-                    Computer.bg_transition_from = state.computer.desktop_background;
-                    if(state.computer.desktop_background == 0) {
-                        state.computer.desktop_background = all_backgrounds.len - 1;
-                    }else{
-                        state.computer.desktop_background -= 1;
-                    }
-                    Computer.bg_transition_dir = 0;
-                    Computer.bg_transition_start = state.frame;
-                    importantSound();
-                }
-                if(button(">", w4.Vec2{x1 + 45, y1 + 13} + offset)) {
-                    Computer.bg_transition_from = state.computer.desktop_background;
-                    state.computer.desktop_background += 1;
-                    state.computer.desktop_background %= @as(comptime_int, all_backgrounds.len);
-                    Computer.bg_transition_dir = 1;
-                    Computer.bg_transition_start = state.frame;
-                    importantSound();
-                }
-            },
-        };
-    }
-    pub fn title(app: Application) []const u8 {
-        return switch(app) {
-            .image_viewer => all_backgrounds[state.computer.desktop_background].attribution,
-        };
-    }
-};
-const WindowState = struct {
-    application: Application,
-    ul: w4.Vec2,
-
-    dragging: bool = false,
-};
-
-fn renderWindow(window: *WindowState) void {
-    // window drag handle 1/2
-    const mpos = w4.MOUSE.pos();
-    if(!w4.MOUSE.buttons.left) {
-        window.dragging = false;
-    }
-    if(window.dragging) {
-        window.ul += mpos - mouse_last_frame.pos();
-        rerender = true;
-    }
-    const max_pos = w4.Vec2{w4.CANVAS_SIZE - 4, w4.CANVAS_SIZE - 4};
-    if(window.ul[w4.x] > max_pos[w4.x]) window.ul[w4.x] = max_pos[w4.x];
-    if(window.ul[w4.y] > max_pos[w4.y]) window.ul[w4.y] = max_pos[w4.y];
-    // window.ul = @minimum(ul, max_pos);
-    const min_pos = w4.Vec2{-10, 0};
-    if(window.ul[w4.x] < min_pos[w4.x]) window.ul[w4.x] = min_pos[w4.x];
-    if(window.ul[w4.y] < min_pos[w4.y]) window.ul[w4.y] = min_pos[w4.y];
-    // window.ul = @maximum(ul, min_pos);
-
-    const ul = window.ul;
-    const br = window.ul + window.application.windowSize() + w4.Vec2{2 + 2, 11 + 2};
-    const x1 = ul[w4.x];
-    const y1 = ul[w4.y];
-    const x2 = br[w4.x];
-    const y2 = br[w4.y];
-
-    // rounded corners
-    w4.ctx.set(.{x1 + 1, y1 + 1}, 0b00);
-    w4.ctx.set(.{x2 - 2, y1 + 1}, 0b00);
-    w4.ctx.set(.{x1 + 1, y2 - 2}, 0b00);
-    w4.ctx.set(.{x2 - 2, y2 - 2}, 0b00);
-
-    // top, left, bottom, right walls
-    rectULBR(.{x1 + 2, y1}, .{x2 - 2, y1 + 1}, 0b00);
-    rectULBR(.{x1 + 2, y2 - 1}, .{x2 - 2, y2}, 0b00);
-    rectULBR(.{x1, y1 + 2}, .{x1 + 1, y2 - 2}, 0b00);
-    rectULBR(.{x2 - 1, y1 + 2}, .{x2, y2 - 2}, 0b00);
-
-    // shaded walls
-    rectULBR(.{x1 + 2, y1 + 1}, .{x2 - 2, y1 + 2}, 0b11);
-    rectULBR(.{x1 + 2, y2 - 2}, .{x2 - 2, y2 - 1}, 0b01);
-    rectULBR(.{x1 + 1, y1 + 2}, .{x1 + 2, y2 - 2}, 0b01);
-    rectULBR(.{x2 - 2, y1 + 2}, .{x2 - 1, y2 - 2}, 0b01);
-
-    // background
-    rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, 0b10);
-
-    // titlebar separation
-    rectULBR(.{x1, y1 + 9}, .{x2, y1 + 10}, 0b00);
-
-    // === these should be rendered by the window ===
-
-    // titlebar:
-    drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, 0b00);
-    const xbtn_click = button("x", .{x2 - 8, y1 + 2});
-
-    // content
-    window.application.render(.{x1 + 2, y1 + 11});
-
-    // window close button handle
-    if(xbtn_click) {
-        // window.application = .none;
-        // TODO: disabled for now
-    }
-
-    // window drag handle 2/2
-    if(pointWithin(mpos, .{x1, y1}, .{x2 - 1, y1 + 9})) {
-        if(mouse_down_this_frame) {
-            window.dragging = true;
-            mouse_down_this_frame = false;
-        }
-    }
+    Computer.bg_transition_dir = 0;
+    Computer.bg_transition_start = state.frame;
+    importantSound();
+}
+fn nextBg() void {
+    Computer.bg_transition_from = state.computer.desktop_background;
+    state.computer.desktop_background += 1;
+    state.computer.desktop_background %= @as(comptime_int, all_backgrounds.len);
+    Computer.bg_transition_dir = 1;
+    Computer.bg_transition_start = state.frame;
+    importantSound();
 }
 
 fn button(text: []const u8, ul: w4.Vec2) bool {
@@ -333,6 +210,8 @@ fn button(text: []const u8, ul: w4.Vec2) bool {
     const mpos = w4.MOUSE.pos();
     const hovering = pointWithin(mpos, ul, br - w4.Vec2{1, 1});
     if(hovering) {
+        rectULBR(ul, br, 0b10);
+    }else{
         rectULBR(ul, br, 0b11);
     }
     drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, 0b00);
@@ -348,9 +227,7 @@ fn measureText(text: []const u8) i32 {
     var res: i32 = 0;
     var cres: i32 = 0;
 
-    var view = std.unicode.Utf8View.initUnchecked(text);
-    var iter = view.iterator();
-    while(iter.nextCodepoint()) |char| {
+    for(text) |char| {
         if(char == '\n') {
             cres = 0;
         }else{
@@ -362,7 +239,7 @@ fn measureText(text: []const u8) i32 {
     return @maximum(res - 1, 0);
 }
 
-fn measureChar(char: u21) i32 {
+fn measureChar(char: u8) i32 {
     return switch(char) {
         'i' => 1,
         'r' => 2,
@@ -379,20 +256,12 @@ fn measureChar(char: u21) i32 {
     };
 }
 const CharPos = [2]i32;
-fn getCharPos(char: u21) CharPos {
+fn getCharPos(char: u8) CharPos {
     switch(char) {
         'A'...'Z' => return .{char - 'A', 1},
         'a'...'z' => return .{char - 'a', 2},
         '0'...':' => return .{char - '0', 0},
-        '↓' => return .{0, 3},
-        '¢' => return .{1, 3},
-        '.' => return .{11, 0},
         ' ' => return .{2, 3},
-        '/' => return .{4, 3},
-        '(' => return .{5, 3},
-        ')' => return .{6, 3},
-        '!' => return .{7, 3},
-        ',' => return .{8, 3},
         '<'...'>' => return .{9 + char - '<', 3},
         else => return .{3, 3},
     }
@@ -417,7 +286,7 @@ fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) 
         .{1, 1},
     );
 }
-fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
+fn renderChar(tex: w4.Tex(.mut), char: u8, pos: w4.Vec2, color: u2) void {
     const c1 = getCharPos(char);
     renderCharPos(tex, c1, pos, color);
 
@@ -426,11 +295,8 @@ fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
 }
 
 fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: u2) void {
-    var view = std.unicode.Utf8View.initUnchecked(text);
-    var iter = view.iterator();
-    var i: i32 = 0;
     var pos = pos_ul;
-    while(iter.nextCodepoint()) |char| : (i += 1) {
+    for(text) |char| {
         if(char == '\n') {
             pos = w4.Vec2{pos_ul[w4.x], pos[w4.y] + 6};
         }else{
@@ -454,10 +320,6 @@ const Computer = struct {
     var bg_transition_start: u64 = 0;
     var bg_transition_dir: u1 = 0;
     desktop_background: u8 = 0,
-    window: WindowState = .{
-        .ul = w4.Vec2{2, 124},
-        .application = .image_viewer,
-    },
 };
 
 var state: State = undefined;
