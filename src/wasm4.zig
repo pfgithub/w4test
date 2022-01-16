@@ -180,7 +180,7 @@ pub const SYSTEM_HIDE_GAMEPAD_OVERLAY: u8 = 2;
 
 pub const externs = struct {
     pub extern fn blit(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, flags: u32) void;
-    pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, src_x: u32, src_y: u32, strie: i32, flags: u32) void;
+    pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, src_x: i32, src_y: i32, strie: i32, flags: u32) void;
     pub extern fn line(x1: i32, y1: i32, x2: i32, y2: i32) void;
     pub extern fn oval(x: i32, y: i32, width: i32, height: i32) void;
     pub extern fn rect(x: i32, y: i32, width: i32, height: i32) void;

@@ -94,7 +94,8 @@ export fn update() void {
     const left = @divFloor(160 - (text_len + 6), 2);
 
     w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, 0b11);
-    drawText(w4.ctx, attrb, .{left + 3, 1}, 0b00);
+    w4.DRAW_COLORS.* = 0x10;
+    drawText(attrb, .{left + 3, 1});
 
     if(w4.GAMEPAD1.button_left and !gp1_last_frame.button_left) {
         prevBg();
@@ -214,7 +215,7 @@ fn button(text: []const u8, ul: w4.Vec2) bool {
     }else{
         rectULBR(ul, br, 0b11);
     }
-    drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, 0b00);
+    drawText(text, ul + w4.Vec2{1, 1});
 
     const clicked = hovering and mouse_down_this_frame;
     if(clicked) {
@@ -268,39 +269,58 @@ fn getCharPos(char: u8) CharPos {
 }
 fn getCharPos2(char: u21) CharPos {
     switch(char) {
-        'M' => return .{12, 0},
-        'W' => return .{22, 0},
+        'M' => return .{13, 3},
+        'W' => return .{23, 3},
         'm' => return .{12, 3},
         'w' => return .{22, 3},
         else => return .{2, 3},
     }
 }
-fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) void {
-    const tex_pos = w4.Vec2{char_pos[0] * 3 + 0, char_pos[1] * 5 + 13};
-    tex.blit(
-        pos,
-        ui_texture,
-        tex_pos,
-        .{3, 5},
-        .{color, 4, 4, 4},
-        .{1, 1},
+
+const font_texture = &[_]u8{
+    0x59,0x6f,0xdd,0xee,0xc8,0x56,0x59,0xfb,0x65,0xbc,0xb6,0xd9,0x25,0x46,0xcc,0x6d,0xb7,
+    0x2b,0x6d,0xa4,0xfa,0x5d,0xaf,0x57,0x4b,0xee,0xf8,0xaa,0x92,0x48,0xbd,0xef,0x1d,0xea,
+    0xf9,0x14,0x77,0x24,0x95,0x5c,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x10,
+    0x10,0x44,0x8a,0x40,0x00,0x00,0x20,0x00,0x00,0x59,0xbc,0x9e,0x02,0xcd,0x96,0x79,0xfb,
+    0x6d,0xb8,0xb6,0x5d,0xed,0x8b,0x4b,0x6d,0xb1,0x2b,0xea,0xa8,0x79,0xb6,0x9d,0x8a,0xa9,
+    0x56,0x73,0x26,0x95,0x4c,0x00,0x00,0x38,0x10,0x00,0x04,0x20,0x00,0x00,0x80,0x48,0x72,
+    0xa4,0x04,0x40,0x80,0x00,0x00,0x02,0x00,0x4c,0x55,0x14,0x0b,0xa9,0x80,0x00,0x00,0x12,
+    0x00,0x58,0x55,0x10,0x10,0x14,0x80,0x00,0x00,0x14,0x00,0xec,0x55,0x14,0x8b,0xa4,0x80,
+    0x00,0x00,0x24,0x00,0x48,0x78,0xa0,0x84,0x40,0x00,0x00,0x00,0x00,0x00,
+    // ok what? "1BPP sprites must have a width divisible by 8"
+    // who made this rule? there's nothing about 1bpp sprites that says they have
+    // to be divisibile by 8
+};
+
+
+fn renderCharPos(char_pos: CharPos, pos: w4.Vec2) void {
+    const tex_pos = w4.Vec2{char_pos[0] * 3, (char_pos[1] - 1) * 5};
+    _ = tex_pos;
+
+    w4.externs.blitSub(
+        font_texture,
+        pos[w4.x], pos[w4.y],
+        3, 5,
+        tex_pos[w4.x], tex_pos[w4.y],
+        80,
+        0,
     );
 }
-fn renderChar(tex: w4.Tex(.mut), char: u8, pos: w4.Vec2, color: u2) void {
+fn renderChar(char: u8, pos: w4.Vec2) void {
     const c1 = getCharPos(char);
-    renderCharPos(tex, c1, pos, color);
+    renderCharPos(c1, pos);
 
     const c2 = getCharPos2(char);
-    renderCharPos(tex, c2, pos + w4.Vec2{3, 0}, color);
+    renderCharPos(c2, pos + w4.Vec2{3, 0});
 }
 
-fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: u2) void {
+fn drawText(text: []const u8, pos_ul: w4.Vec2) void {
     var pos = pos_ul;
     for(text) |char| {
         if(char == '\n') {
             pos = w4.Vec2{pos_ul[w4.x], pos[w4.y] + 6};
         }else{
-            renderChar(tex, char, pos, color);
+            renderChar(char, pos);
             pos += w4.Vec2{measureChar(char) + 1, 0};
         }
     }
