@@ -516,6 +516,9 @@ fn successSound() void {
 fn failureSound() void {
     w4.tone(.{.start = 50, .end = 40}, .{.release = 12}, 54, .{.channel = .pulse1, .mode = .p50});
 }
+fn backgroundSwitcherSwoosh() void {
+    w4.tone(.{.start = 180}, .{.attack = 10, .release = 10}, 100, .{.channel = .noise});
+}
 
 fn autoFarmPlate(purchased: *bool, coins: *f32, price: f32, msg1: []const u8, msg2: []const u8, label: []const u8) void {
     if(purchased.*) {
@@ -953,10 +956,10 @@ const BackgroundImage = struct {
     }
 };
 const all_backgrounds = [_]BackgroundImage{
-    // BackgroundImage.from("Peter Wormstetter", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
-    BackgroundImage.from("Caleb Ralston", @embedFile("backgrounds/Caleb Ralston.png.w4i")),
-    BackgroundImage.from("Ales Krivec", @embedFile("backgrounds/Ales Krivec.jpg.w4i")),
-    BackgroundImage.from("Blake Verdoorn", @embedFile("backgrounds/Blake Verdoorn.jpg.w4i")),
+    BackgroundImage.from("Oranges", @embedFile("backgrounds/Caleb Ralston.png.w4i")),
+    BackgroundImage.from("Browns", @embedFile("backgrounds/Ales Krivec.jpg.w4i")),
+    BackgroundImage.from("Greens", @embedFile("backgrounds/Blake Verdoorn.jpg.w4i")),
+    BackgroundImage.from("Blues", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
 };
 
 const Application = enum {
@@ -1012,6 +1015,8 @@ const Application = enum {
                     }
                     Computer.bg_transition_dir = 0;
                     Computer.bg_transition_start = state.frame;
+
+                    backgroundSwitcherSwoosh();
                 }
                 if(button(">", .{x1 + 45, y1 + 13})) {
                     Computer.bg_transition_from = state.computer.desktop_background;
@@ -1019,6 +1024,8 @@ const Application = enum {
                     state.computer.desktop_background %= @as(comptime_int, all_backgrounds.len);
                     Computer.bg_transition_dir = 1;
                     Computer.bg_transition_start = state.frame;
+
+                    backgroundSwitcherSwoosh();
                 }
             },
             .platformer => {},
