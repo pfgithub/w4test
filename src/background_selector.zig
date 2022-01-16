@@ -1,7 +1,10 @@
 //! TODO
-//! move all the text rendering functions into their own file
-//! have that file embed its own font
-//! don't include the font in the main platformer-ui.png
+//! ok this is done
+//! if we wanted to spend longer, we could
+//! - add a super smooth click-and-drag to switch images thing. would feel amazing on
+//!   mobile and pretty good on desktop
+//! - improve our compression and add in the 14th image. I literally just need like
+//!   5kb more, that shouldn't be too hard
 
 const std = @import("std");
 const w4 = @import("wasm4.zig");
@@ -39,6 +42,9 @@ var gp1_last_frame: w4.Gamepad = w4.Gamepad{};
 
 var rerender = true;
 
+var last_key: u64 = 0;
+var prev_menu_visible = false;
+
 export fn update() void {
     state.frame += 1;
 
@@ -48,6 +54,19 @@ export fn update() void {
     mouse_down_this_frame = false;
     if(w4.MOUSE.buttons.left and !mouse_last_frame.buttons.left) {
         mouse_down_this_frame = true;
+    }
+
+    const mpos = w4.MOUSE.pos();
+    if(@reduce(.Or, mpos != mouse_last_frame.pos())) {
+        last_key = state.frame;
+    }
+    if(pointWithin(mpos, .{0, 0}, .{159, 6})) {
+        last_key = state.frame;
+    }
+    const menu_visible = last_key + 60 >= state.frame;
+    defer prev_menu_visible = menu_visible;
+    if(!menu_visible and prev_menu_visible) {
+        rerender = true;
     }
 
     if(Computer.bg_transition_start != 0) {
@@ -89,25 +108,32 @@ export fn update() void {
 
     // renderWindow(&state.computer.window);
 
-    const attrb = all_backgrounds[state.computer.desktop_background].attribution;
-    const text_len = measureText(attrb);
-    const left = @divFloor(160 - (text_len + 6), 2);
+    if(menu_visible) {
+        const attrb = all_backgrounds[state.computer.desktop_background].attribution;
+        const text_len = measureText(attrb);
+        const left = @divFloor(160 - (text_len + 6), 2);
 
-    w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, 0b11);
-    w4.DRAW_COLORS.* = 0x10;
-    drawText(attrb, .{left + 3, 1});
+        w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, 0b11);
+        w4.DRAW_COLORS.* = 0x10;
+        drawText(attrb, .{left + 3, 1});
 
+        if(button(" < ", w4.Vec2{0, 0})) {
+            prevBg();
+        }
+        if(button(" > ", w4.Vec2{160 - 2 - 3 - 3 - 3, 0})) {
+            nextBg();
+        }
+    }
     if(w4.GAMEPAD1.button_left and !gp1_last_frame.button_left) {
         prevBg();
+        last_key = state.frame;
     }
     if(w4.GAMEPAD1.button_right and !gp1_last_frame.button_right) {
         nextBg();
+        last_key = state.frame;
     }
-    if(button(" < ", w4.Vec2{0, 0})) {
-        prevBg();
-    }
-    if(button(" > ", w4.Vec2{160 - 2 - 3 - 3 - 3, 0})) {
-        nextBg();
+    if(w4.GAMEPAD1.button_up or w4.GAMEPAD1.button_down or w4.GAMEPAD1.button_1 or w4.GAMEPAD1.button_2) {
+        last_key = state.frame;
     }
 }
 

@@ -8,6 +8,16 @@ recommend also using wasm-opt -Oz because it got likt 50kb → 46kb
 
 check this: `wasm-objdump zig-out/lib/cart.wasm -x -j code`
 
+## how to for people using my imgconv
+
+1. scale the image down to 160x160
+2. https://www.imgonline.com.ua/eng/limit-color-number.php
+3. imgconv image.jpg image.w4i --compress --detect-palette
+
+`output[0..16]` contains the palette (`[4]u32`)
+
+`output[16..]` contains the compressed image data
+
 ## TODO:
 
 - [ ] finish up the game
