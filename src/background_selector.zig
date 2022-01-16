@@ -323,13 +323,13 @@ fn renderCharPos(char_pos: CharPos, pos: w4.Vec2) void {
     const tex_pos = w4.Vec2{char_pos[0] * 3, (char_pos[1] - 1) * 5};
     _ = tex_pos;
 
-    w4.externs.blitSub(
+    w4.blitSub(
         font_texture,
-        pos[w4.x], pos[w4.y],
-        3, 5,
-        tex_pos[w4.x], tex_pos[w4.y],
+        pos,
+        .{3, 5},
+        tex_pos,
         80,
-        0,
+        .{.bpp = .b1},
     );
 }
 fn renderChar(char: u8, pos: w4.Vec2) void {
