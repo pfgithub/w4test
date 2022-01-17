@@ -92,7 +92,7 @@ export fn update() void {
         const mouse_diff = mouse_last_frame.pos() - mpos;
         const diff_v = @intToFloat(f32, mouse_diff[w4.x]) / width_between_images;
         state.computer.current_pos += diff_v;
-        state.computer.current_vel = @maximum(@minimum(diff_v, 0.1), -0.1);
+        state.computer.current_vel = @maximum(@minimum(diff_v, 0.05), -0.05);
         if(diff_v < 0) {
             state.computer.target_pos = @floor(state.computer.current_pos);
         }else if(diff_v > 0) {
@@ -111,6 +111,7 @@ export fn update() void {
     }
 
     // smoothly transition to target_pos
+    // (it still doesn't feel quite right, but it's better than it was at least)
     if(!noaccel) {   
         const DECELERATION = 0.01;
         const ACCELERATION = 0.01;
@@ -118,7 +119,7 @@ export fn update() void {
         const distance = state.computer.target_pos - state.computer.current_pos;
         const decel_distance = (velocity * velocity) / (2 * DECELERATION);
         
-        if(std.math.fabs(distance) < std.math.fabs(velocity)) {// and std.math.fabs(velocity) < 0.05) {
+        if(std.math.fabs(distance) < std.math.fabs(velocity) and std.math.fabs(velocity) < 0.05) {
             state.computer.current_vel = 0;
             state.computer.current_pos = state.computer.target_pos;
         }else{
@@ -127,7 +128,7 @@ export fn update() void {
                     state.computer.current_vel += ACCELERATION;
                 }else if(distance > decel_distance) {
                     state.computer.current_vel += ACCELERATION;
-                }else if(distance < decel_distance) {
+                }else {
                     state.computer.current_vel -= DECELERATION;
                 }
             }else if(distance < 0) {
@@ -135,7 +136,7 @@ export fn update() void {
                     state.computer.current_vel -= DECELERATION;
                 }else if(-distance > decel_distance) {
                     state.computer.current_vel -= ACCELERATION;
-                }else if(-distance < decel_distance) {
+                }else {
                     state.computer.current_vel += DECELERATION;
                 }
             }
