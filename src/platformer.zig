@@ -986,8 +986,7 @@ const Application = enum {
         return switch(app) {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
-                drawText(w4.ctx, "By\non Unsplash", .{x1 + 1, y1 + 28}, 0b00);
-                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 11, y1 + 28}, 0b00);
+                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 22, y1 + 28}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
