@@ -45,6 +45,12 @@ var rerender = true;
 var last_key: u64 = 0;
 var prev_menu_visible = false;
 
+fn getBG(pos: f32) usize {
+    return @floatToInt(usize, @mod(@floor(pos), @as(comptime_int, all_backgrounds.len)));
+}
+
+const transition_time = 20;
+
 export fn update() void {
     state.frame += 1;
 
@@ -69,38 +75,77 @@ export fn update() void {
         rerender = true;
     }
 
-    if(Computer.bg_transition_start != 0) {
-        rerender = true;
+    // smoothly transition to target_pos
+    if(state.computer.goal_time > state.frame) {
+        const goal_time = @intToFloat(f32, state.computer.goal_time - state.frame);
 
-        const time_unscaled = @intToFloat(f32, state.frame - Computer.bg_transition_start) / 20.0;
-        const time = easeInOut(time_unscaled);
+        // min_projection = projection assuming we slow down by 0.1 every frame
+        // max_projection = projection assuming we speed up by 0.1 every frame
+        // if(min_projection > target_pos) slow down
+        // if(max_projection < target_pos) speed up
+        // huh I can calculate those but I'm not sure if that's helpful
 
-        var shx = @floatToInt(i32, time * 160);
-        var shx2 = shx - 160;
-        if(Computer.bg_transition_dir == 1) {
-            shx2 = 160 - shx2 - 160;
-            shx = 160 - shx - 160;
+        const a_max = 0.01;
+        const a_min = -a_max;
+        const v_el = state.computer.current_vel;
+        const t = goal_time;
+        const s_tart = state.computer.current_pos;
+
+        // projection assuming we ramp speed up
+        const min_projection = v_el * t + (1.0 / 2.0) * a_min * t * t + s_tart;
+        // projection assuming we ramp speed down
+        const max_projection = v_el * t + (1.0 / 2.0) * a_max * t * t + s_tart;
+
+        // ah ok so
+        // we want to speed up until we would not reach the target if we sped up more right?
+    
+        // ok this is all wrong
+        // our goal is to:
+        // go as fast as possible and reach the target going 0 speed.
+        // we can only accelerate ±0.01
+        // that's our goal
+        // so we want to calculate if we should speed up or speed down
+
+        // and then part 2 is adding in mouse controls so you can drag
+        // and then it 
+
+        // why is this so complicated this is literally the most simple 1d math to
+        // exist
+
+        if(max_projection > state.computer.target_pos + a_max) {
+            // we're going to overshoot, slow down
+            state.computer.current_vel -= a_max;
+        }else if(min_projection < state.computer.target_pos - a_max) {
+            // we're not going to make it, speed up
+            state.computer.current_vel += a_max;
         }
 
-        img.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
-        img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
+        state.computer.current_pos += state.computer.current_vel;
+    }else{
+        state.computer.current_pos = state.computer.target_pos;
+        state.computer.current_vel = 0;
+    }
+
+    rerender = true;
+    if(rerender) {
+        const pos = state.computer.current_pos;
+        const phase = @mod(pos, 1.0);
+        const bg_1 = getBG(pos);
+        const bg_2 = (bg_1 + 1) % all_backgrounds.len;
+
+        var shx = @floatToInt(i32, phase * 160);
+        var shx2 = shx - 160;
+        shx2 = 160 - shx2 - 160;
+        shx = 160 - shx - 160;
+
+        img.decompress(all_backgrounds[bg_1].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
+        img.decompress(all_backgrounds[bg_2].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
 
         w4.PALETTE.* = themeMix(
-            all_backgrounds[Computer.bg_transition_from].palette,
-            all_backgrounds[state.computer.desktop_background].palette,
-            time,
+            all_backgrounds[bg_1].palette,
+            all_backgrounds[bg_2].palette,
+            phase,
         );
-
-        if(time_unscaled >= 1.0) {
-            Computer.bg_transition_start = 0;
-        }
-    }else{
-        if(rerender) {
-            img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, w4.ctx, .{0, 0}) catch unreachable;
-            rerender = false;
-        }
-
-        w4.PALETTE.* = all_backgrounds[state.computer.desktop_background].palette;
     }
 
     // damn basically any theme works for this image
@@ -109,7 +154,7 @@ export fn update() void {
     // renderWindow(&state.computer.window);
 
     if(menu_visible) {
-        const attrb = all_backgrounds[state.computer.desktop_background].attribution;
+        const attrb = all_backgrounds[getBG(state.computer.target_pos)].attribution;
         const text_len = measureText(attrb);
         const left = @divFloor(160 - (text_len + 6), 2);
 
@@ -211,22 +256,13 @@ const all_backgrounds = [_]BackgroundImage{
 };
 
 fn prevBg() void {
-    Computer.bg_transition_from = state.computer.desktop_background;
-    if(state.computer.desktop_background == 0) {
-        state.computer.desktop_background = all_backgrounds.len - 1;
-    }else{
-        state.computer.desktop_background -= 1;
-    }
-    Computer.bg_transition_dir = 0;
-    Computer.bg_transition_start = state.frame;
+    state.computer.target_pos -= 1;
+    state.computer.goal_time = state.frame + transition_time;
     importantSound();
 }
 fn nextBg() void {
-    Computer.bg_transition_from = state.computer.desktop_background;
-    state.computer.desktop_background += 1;
-    state.computer.desktop_background %= @as(comptime_int, all_backgrounds.len);
-    Computer.bg_transition_dir = 1;
-    Computer.bg_transition_start = state.frame;
+    state.computer.target_pos += 1;
+    state.computer.goal_time = state.frame + transition_time;
     importantSound();
 }
 
@@ -362,10 +398,11 @@ fn themeMix(a: [4]u32, b: [4]u32, t: f32) [4]u32 {
 }
 
 const Computer = struct {
-    var bg_transition_from: u8 = 0;
-    var bg_transition_start: u64 = 0;
-    var bg_transition_dir: u1 = 0;
-    desktop_background: u8 = 0,
+    current_pos: f32 = 0,
+    current_vel: f32 = 0,
+    current_accel: f32 = 0,
+    target_pos: f32 = 0, // wrapping
+    goal_time: u64 = 0,
 };
 
 var state: State = undefined;
