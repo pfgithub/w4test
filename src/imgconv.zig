@@ -85,6 +85,19 @@ pub fn px(size: w4.Vec2, written_count: i32) w4.Vec2 {
     return w4.Vec2{x, y};
 }
 
+fn readBitsSmall(reader: anytype, comptime IntType: type, bits: u6) !IntType {
+    // this could be integrated into the standard library - readBits could be changed
+    // to call a function like this with the nearest power of two int or something
+    // so if you readbits into a u4 it'd actually do a u8 and when you do a u3 too
+    // it'll use that same u8 fn
+
+    if(bits > 32) unreachable; // max u32
+    if(std.meta.bitCount(IntType) < bits) unreachable; // must fit bits
+    const result = try reader.readBitsNoEof(u32, bits);
+    // if(signed) read into i32 instead of u32
+    return @intCast(IntType, result);
+}
+
 pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.mut), offset: w4.Vec2) !void {
     var fbs_in = std.io.fixedBufferStream(compressed_in);
     var reader = std.io.bitReader(.Little, fbs_in.reader());
@@ -94,12 +107,12 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
     const compress_opts = try CompressOpts.read(&reader);
 
     whlp: while(true) {
-        const mode = reader.readBitsNoEof(u1, 1) catch break :whlp;
+        const mode = readBitsSmall(&reader, u1, 1) catch break :whlp;
         switch(mode) {
             0 => {
-                const value = reader.readBitsNoEof(u2, 2) catch break :whlp;
-                const len_len = reader.readBitsNoEof(u1, 1) catch break :whlp;
-                const len = reader.readBitsNoEof(u14, switch(len_len) {
+                const value = readBitsSmall(&reader, u2, 2) catch break :whlp;
+                const len_len = readBitsSmall(&reader, u1, 1) catch break :whlp;
+                const len = readBitsSmall(&reader, u14, switch(len_len) {
                     0 => compress_opts.small_repeat_len,
                     1 => 14,
                 }) catch break :whlp;
@@ -109,11 +122,11 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
                 }
             },
             1 => {
-                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
+                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
                 written_count += 1;
-                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
+                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
                 written_count += 1;
-                tex_out.set(px(size_in, written_count) + offset, reader.readBitsNoEof(u2, 2) catch break :whlp);
+                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
                 written_count += 1;
             },
         }
@@ -134,7 +147,7 @@ const CompressOpts = struct {
         try writer.writeBits(opts.small_repeat_len, 4);
     }
     pub fn read(reader: anytype) !CompressOpts {
-        const small_repeat_len = try reader.readBitsNoEof(u4, 4);
+        const small_repeat_len = try readBitsSmall(reader, u4, 4);
         return CompressOpts{
             .small_repeat_len = small_repeat_len,
         };
