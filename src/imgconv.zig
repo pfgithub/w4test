@@ -409,6 +409,7 @@ pub fn processSubimage(
         }
 
         palette = all_colors.items[0..4].*;
+        std.log.info("Auto-detected palette: {x:0>6}", .{palette});
     }
 
     for(range(ul_h)) |_, y| {

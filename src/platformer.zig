@@ -900,6 +900,16 @@ export fn update() void {
                 }
             }
 
+            rectULBR(.{0, 160 - 12}, .{160, 160 - 11}, 0b00);
+            rectULBR(.{0, 160 - 11}, .{160, 160 - 10}, 0b11);
+            rectULBR(.{0, 160 - 10}, .{160, 160}, 0b10);
+            const button_text = "Programs";
+            const button_width = measureText(button_text);
+            _ = button("Programs", .{2, 160 - 8});
+            rectULBR(.{button_width + 6, 160 - 11}, .{button_width + 7, 160}, 0b01);
+            rectULBR(.{button_width + 7, 160 - 11}, .{button_width + 8, 160}, 0b00);
+            rectULBR(.{button_width + 8, 160 - 10}, .{button_width + 9, 160}, 0b01);
+
             renderWindow(&state.computer.window);
             // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
             // renderWindow(.{20, 30}, .{150, 120}, "Settings");
@@ -939,27 +949,20 @@ const BackgroundImage = struct {
     file: []const u8,
     palette: [4]u32,
 
-    pub fn from(comptime author: []const u8, file_raw: []const u8) BackgroundImage {
-        // const content_file_raw = file_raw;
-        const content_file_raw = @embedFile("backgrounds/Nobody.png.w4i");
-        const value = file_raw[0..@sizeOf(u32) * 4];
+    pub fn from(comptime author: []const u8, palette: [4]u32) BackgroundImage {
         return .{
             .attribution = author, // TODO don't do this
             .file = content_file_raw[@sizeOf(u32) * 4..],
-            .palette = .{
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
-            },
+            .palette = palette,
         };
     }
 };
+const content_file_raw = @embedFile("backgrounds/Nobody.png.w4i");
 const all_backgrounds = [_]BackgroundImage{
-    BackgroundImage.from("Oranges", @embedFile("backgrounds/Caleb Ralston.png.w4i")),
-    BackgroundImage.from("Browns", @embedFile("backgrounds/Ales Krivec.jpg.w4i")),
-    BackgroundImage.from("Greens", @embedFile("backgrounds/Blake Verdoorn.jpg.w4i")),
-    BackgroundImage.from("Blues", @embedFile("backgrounds/Peter Wormstetter.png.w4i")),
+    BackgroundImage.from("Oranges", .{ 0x140e10, 0x563433, 0x4f4e5e, 0x9b4629 }),
+    BackgroundImage.from("Browns", .{ 0x46311c, 0x9f664b, 0xcc956c, 0xe6cbba }),
+    BackgroundImage.from("Greens", .{ 0x0f1606, 0x47591b, 0xa7bf1f, 0xbccf9d }),
+    BackgroundImage.from("Blues", .{ 0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3 }),
 };
 
 const Application = enum {
@@ -1113,12 +1116,18 @@ fn renderWindow(window: *WindowState) void {
     rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, 0b10);
 
     // titlebar separation
-    rectULBR(.{x1, y1 + 9}, .{x2, y1 + 10}, 0b00);
+    rectULBR(.{x1 + 1, y1 + 9}, .{x2 - 1, y1 + 10}, 0b01);
+    rectULBR(.{x1 + 2, y1 + 10}, .{x2 - 2, y1 + 11}, 0b11);
+    rectULBR(.{x2 - 12, y1 + 1}, .{x2 - 11, y1 + 9}, 0b01);
+    rectULBR(.{x2 - 11, y1 + 1}, .{x2 - 10, y1 + 10}, 0b00);
+    rectULBR(.{x2 - 10, y1 + 2}, .{x2 - 9, y1 + 9}, 0b01);
 
     // === these should be rendered by the window ===
 
     // titlebar:
+    // [ text highlight ] // drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 4}, 0b11);
     drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, 0b00);
+    // [ text highlight ] // drawText(w4.ctx, "x", .{x2 - 7, y1 + 4}, 0b11);
     const xbtn_click = button("x", .{x2 - 8, y1 + 2});
 
     // content
