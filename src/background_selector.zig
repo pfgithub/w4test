@@ -20,6 +20,7 @@ var decompressed_image: ?w4.Tex(.mut) = null;
 
 export fn start() void {
     w4.SYSTEM_FLAGS.preserve_framebuffer = true;
+    w4.SYSTEM_FLAGS.hide_gamepad_overlay = true;
 
     state = .{};
 }
@@ -30,7 +31,7 @@ fn pointWithin(pos: w4.Vec2, ul: w4.Vec2, br: w4.Vec2) bool {
     and @reduce(.And, pos <= br);
 }
 fn importantSound() void {
-    w4.tone(.{.start = 180}, .{.attack = 10, .release = 10}, 100, .{.channel = .noise});
+    // w4.tone(.{.start = 180}, .{.attack = 10, .release = 10}, 100, .{.channel = .noise});
 }
 
 const ui_texture = w4.Tex(.cons).wrapSlice(@embedFile("platformer-ui.w4i"), .{80, 80});
@@ -45,17 +46,36 @@ var rerender = true;
 var last_key: u64 = 0;
 var prev_menu_visible = false;
 
-fn getBG(pos: f32) usize {
-    return @floatToInt(usize, @mod(@floor(pos), @as(comptime_int, all_backgrounds.len)));
+fn getBG(pos: f32) u8 {
+    return @floatToInt(u8, @mod(@floor(pos), @as(comptime_int, all_backgrounds.len)));
 }
 
 const transition_time = 20;
+
+var bg1_last_frame: u8 = std.math.maxInt(u8);
+var shx_last_frame: i32 = std.math.maxInt(i32);
+
+const extra_between_images = 0;
+const width_between_images = 160 + extra_between_images;
+const bar_width = 30;
+
+var dragging = false;
+
+fn scale(min: f32, max: f32, value: f32, start_0: f32, end_0: f32, restrict: enum{constrain, no_constrain}) f32 {
+    const res = (end_0 - start_0) * ((value - min) / (max - min)) + start_0;
+    if(restrict == .no_constrain) return res;
+    const smin = @minimum(start_0, end_0);
+    const smax = @maximum(start_0, end_0);
+    return @minimum(@maximum(res, smin), smax);
+}
 
 export fn update() void {
     state.frame += 1;
 
     defer mouse_last_frame = w4.MOUSE.*;
     defer gp1_last_frame = w4.GAMEPAD1.*;
+
+    var noaccel = false;
 
     mouse_down_this_frame = false;
     if(w4.MOUSE.buttons.left and !mouse_last_frame.buttons.left) {
@@ -66,8 +86,23 @@ export fn update() void {
     if(@reduce(.Or, mpos != mouse_last_frame.pos())) {
         last_key = state.frame;
     }
-    if(pointWithin(mpos, .{0, 0}, .{159, 6})) {
+    if(pointWithin(mpos, .{0, 0}, .{159, 6}) and !dragging) {
         last_key = state.frame;
+    }else if(mouse_last_frame.buttons.left) {
+        const mouse_diff = mouse_last_frame.pos() - mpos;
+        const diff_v = @intToFloat(f32, mouse_diff[w4.x]) / width_between_images;
+        state.computer.current_pos += diff_v;
+        state.computer.current_vel = @maximum(@minimum(diff_v, 0.1), -0.1);
+        if(diff_v < 0) {
+            state.computer.target_pos = @floor(state.computer.current_pos);
+        }else if(diff_v > 0) {
+            state.computer.target_pos = @ceil(state.computer.current_pos);
+        }
+        noaccel = true;
+        dragging = true;
+        mouse_down_this_frame = false;
+    }else{
+        dragging = false;
     }
     const menu_visible = last_key + 60 >= state.frame;
     defer prev_menu_visible = menu_visible;
@@ -76,70 +111,68 @@ export fn update() void {
     }
 
     // smoothly transition to target_pos
-    if(state.computer.goal_time > state.frame) {
-        const goal_time = @intToFloat(f32, state.computer.goal_time - state.frame);
-
-        // min_projection = projection assuming we slow down by 0.1 every frame
-        // max_projection = projection assuming we speed up by 0.1 every frame
-        // if(min_projection > target_pos) slow down
-        // if(max_projection < target_pos) speed up
-        // huh I can calculate those but I'm not sure if that's helpful
-
-        const a_max = 0.01;
-        const a_min = -a_max;
-        const v_el = state.computer.current_vel;
-        const t = goal_time;
-        const s_tart = state.computer.current_pos;
-
-        // projection assuming we ramp speed up
-        const min_projection = v_el * t + (1.0 / 2.0) * a_min * t * t + s_tart;
-        // projection assuming we ramp speed down
-        const max_projection = v_el * t + (1.0 / 2.0) * a_max * t * t + s_tart;
-
-        // ah ok so
-        // we want to speed up until we would not reach the target if we sped up more right?
-    
-        // ok this is all wrong
-        // our goal is to:
-        // go as fast as possible and reach the target going 0 speed.
-        // we can only accelerate ±0.01
-        // that's our goal
-        // so we want to calculate if we should speed up or speed down
-
-        // and then part 2 is adding in mouse controls so you can drag
-        // and then it 
-
-        // why is this so complicated this is literally the most simple 1d math to
-        // exist
-
-        if(max_projection > state.computer.target_pos + a_max) {
-            // we're going to overshoot, slow down
-            state.computer.current_vel -= a_max;
-        }else if(min_projection < state.computer.target_pos - a_max) {
-            // we're not going to make it, speed up
-            state.computer.current_vel += a_max;
+    if(!noaccel) {   
+        const DECELERATION = 0.01;
+        const ACCELERATION = 0.01;
+        const velocity = state.computer.current_vel;
+        const distance = state.computer.target_pos - state.computer.current_pos;
+        const decel_distance = (velocity * velocity) / (2 * DECELERATION);
+        
+        if(std.math.fabs(distance) < std.math.fabs(velocity)) {// and std.math.fabs(velocity) < 0.05) {
+            state.computer.current_vel = 0;
+            state.computer.current_pos = state.computer.target_pos;
+        }else{
+            if(distance > 0) {
+                if(velocity < 0) {
+                    state.computer.current_vel += ACCELERATION;
+                }else if(distance > decel_distance) {
+                    state.computer.current_vel += ACCELERATION;
+                }else if(distance < decel_distance) {
+                    state.computer.current_vel -= DECELERATION;
+                }
+            }else if(distance < 0) {
+                if(velocity > 0) {
+                    state.computer.current_vel -= DECELERATION;
+                }else if(-distance > decel_distance) {
+                    state.computer.current_vel -= ACCELERATION;
+                }else if(-distance < decel_distance) {
+                    state.computer.current_vel += DECELERATION;
+                }
+            }
         }
 
         state.computer.current_pos += state.computer.current_vel;
-    }else{
-        state.computer.current_pos = state.computer.target_pos;
-        state.computer.current_vel = 0;
+    }
+    const volume = scale(0.0, 0.1, std.math.fabs(state.computer.current_vel), 0.0, 100.0, .constrain);
+    if(volume > 10) {
+        w4.tone(.{.start = 180}, .{.sustain = 4}, @floatToInt(u32, volume), .{.channel = .noise});
     }
 
-    rerender = true;
-    if(rerender) {
-        const pos = state.computer.current_pos;
-        const phase = @mod(pos, 1.0);
-        const bg_1 = getBG(pos);
-        const bg_2 = (bg_1 + 1) % all_backgrounds.len;
+    const pos = state.computer.current_pos;
+    const phase = @mod(pos, 1.0);
+    const bg_1 = getBG(pos);
+    const bg_2 = (bg_1 + 1) % all_backgrounds.len;
 
-        var shx = @floatToInt(i32, phase * 160);
-        var shx2 = shx - 160;
-        shx2 = 160 - shx2 - 160;
-        shx = 160 - shx - 160;
+    var shx = @floatToInt(i32, phase * width_between_images);
+    var shx2 = shx - width_between_images;
+    shx2 = width_between_images - shx2 - width_between_images;
+    shx = width_between_images - shx - width_between_images;
+
+    if(bg_1 != bg1_last_frame or shx != shx_last_frame) {
+        rerender = true;
+    }
+
+    if(rerender) {
+        bg1_last_frame = bg_1;
+        shx_last_frame = shx;
 
         img.decompress(all_backgrounds[bg_1].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
         img.decompress(all_backgrounds[bg_2].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
+
+        // w4.DRAW_COLORS.* = 0x11;
+        const offset_scale = scale(0, 1, phase, 0, bar_width - extra_between_images, .constrain);
+        // w4.rect(.{shx + 160 - @floatToInt(i32, offset_scale), 0}, .{bar_width, 160});
+        w4.ctx.rect(.{shx + 160 - @floatToInt(i32, offset_scale), 0}, .{bar_width, 160}, 0b00);
 
         w4.PALETTE.* = themeMix(
             all_backgrounds[bg_1].palette,
@@ -154,7 +187,7 @@ export fn update() void {
     // renderWindow(&state.computer.window);
 
     if(menu_visible) {
-        const attrb = all_backgrounds[getBG(state.computer.target_pos)].attribution;
+        const attrb = all_backgrounds[getBG(state.computer.current_pos - 0.5)].attribution;
         const text_len = measureText(attrb);
         const left = @divFloor(160 - (text_len + 6), 2);
 
