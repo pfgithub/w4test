@@ -6,6 +6,24 @@ const std = @import("std");
 const w4 = @import("wasm4.zig");
 const colr = @import("color.zig");
 
+pub const ReadImageOpts = struct {
+    palette: bool,
+};
+pub fn readImage(comptime opts: ReadImageOpts, file: []const u8) type {
+    if(!opts.palette) return opaque {
+        pub const data = file;
+    };
+    return opaque {
+        pub const data = file[@sizeOf(u32) * 4..];
+        pub const palette: [4]u32 = .{
+            std.mem.bytesToValue(u32, file[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, file[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, file[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
+            std.mem.bytesToValue(u32, file[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
+        };
+    };
+}
+
 // TODO: support 1bpp, 2bpp, specifying colors, and basic compression
 
 // fullscreen image size: 6.25KiB

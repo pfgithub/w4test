@@ -33,7 +33,7 @@
 
 const std = @import("std");
 const w4 = @import("wasm4.zig");
-const img = @import("imgconv.zig");
+const w4i = @import("imgconv.zig");
 const colr = @import("color.zig");
 
 const dev_mode = switch(@import("builtin").mode) {
@@ -57,7 +57,7 @@ fn getLevelIndex(i: usize) usize {
     return std.mem.bytesToValue(u32, value);
 }
 
-const LevelTex = img.decompressionData(w4.Vec2{chunk_size * 2, chunk_size * 2});
+const LevelTex = w4i.decompressionData(w4.Vec2{chunk_size * 2, chunk_size * 2});
 var level_tex: LevelTex = undefined;
 var level_ul_x: i32 = undefined;
 var level_ul_y: i32 = undefined;
@@ -70,7 +70,7 @@ fn decompressLevel(x: i32, y: i32, offset: w4.Vec2) void {
 
     const index = @intCast(usize, y * chunk_count + x);
 
-    img.decompress(
+    w4i.decompress(
         levels_data[getLevelIndex(index)..getLevelIndex(index + 1)],
         .{chunk_size, chunk_size},
         level_tex.texMut(),
@@ -857,8 +857,8 @@ export fn update() void {
                     shx = 160 - shx - 160;
                 }
 
-                img.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
-                img.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
+                w4i.decompress(all_backgrounds[Computer.bg_transition_from].file, .{160, 160}, level_tex.texMut(), .{shx, 0}) catch unreachable;
+                w4i.decompress(all_backgrounds[state.computer.desktop_background].file, .{160, 160}, level_tex.texMut(), .{shx2, 0}) catch unreachable;
 
                 w4.PALETTE.* = themeMix(
                     all_backgrounds[Computer.bg_transition_from].palette,
@@ -875,7 +875,7 @@ export fn update() void {
                     level_ul_y = -5;
                     loaded_bg = state.computer.desktop_background;
 
-                    img.decompress(all_backgrounds[loaded_bg].file, .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
+                    w4i.decompress(all_backgrounds[loaded_bg].file, .{160, 160}, level_tex.texMut(), .{0, 0}) catch unreachable;
                     // ok if we did some super fancy stuff
                     // we could transition between backgrounds with a sliding effect
                     // like :: mix the palettes and while transitioning, decompress 8 times

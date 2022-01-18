@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const w4 = @import("wasm4.zig");
-const img = @import("imgconv.zig");
+const w4i = @import("imgconv.zig");
 const colr = @import("color.zig");
 
 const dev_mode = switch(@import("builtin").mode) {
@@ -167,8 +167,8 @@ export fn update() void {
         bg1_last_frame = bg_1;
         shx_last_frame = shx;
 
-        img.decompress(all_backgrounds[bg_1].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
-        img.decompress(all_backgrounds[bg_2].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
+        w4i.decompress(all_backgrounds[bg_1].file, .{160, 160}, w4.ctx, .{shx, 0}) catch unreachable;
+        w4i.decompress(all_backgrounds[bg_2].file, .{160, 160}, w4.ctx, .{shx2, 0}) catch unreachable;
 
         // w4.DRAW_COLORS.* = 0x11;
         const offset_scale = scale(0, 1, phase, 0, bar_width - extra_between_images, .constrain);
@@ -230,17 +230,11 @@ const BackgroundImage = struct {
     palette: [4]u32,
 
     pub fn from(comptime author: []const u8, file_raw: []const u8) BackgroundImage {
-        const content_file_raw = file_raw;
-        const value = file_raw[0..@sizeOf(u32) * 4];
+        const image = w4i.readImage(.{.palette = true}, file_raw);
         return .{
-            .attribution = author, // TODO don't do this
-            .file = content_file_raw[@sizeOf(u32) * 4..],
-            .palette = .{
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 0..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 1..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 2..][0..@sizeOf(u32)]),
-                std.mem.bytesToValue(u32, value[@sizeOf(u32) * 3..][0..@sizeOf(u32)]),
-            },
+            .attribution = author,
+            .file = image.data,
+            .palette = image.palette,
         };
     }
 };
