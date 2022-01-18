@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
     const imgconv = b.addExecutable("imgconv", "src/imgconv.zig");
-    imgconv.setBuildMode(.ReleaseSafe);
+    // imgconv.setBuildMode(.ReleaseSafe);
     imgconv.addCSourceFile("src/stb_image.c", &.{}); // src/stb_image.h -DSTB_IMAGE_IMPLEMENTATION
     imgconv.addIncludeDir("src/");
     imgconv.linkLibC();
@@ -64,7 +64,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const mode = b.standardReleaseOptions();
 
-    const application = "src/platformer.zig";
+    const application = "src/background_selector.zig";
 
     const lib = b.addSharedLibrary("cart", application, .unversioned);
     lib.setBuildMode(mode);

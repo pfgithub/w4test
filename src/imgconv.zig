@@ -98,6 +98,9 @@ fn readBitsSmall(reader: anytype, comptime IntType: type, bits: u6) !IntType {
     return @intCast(IntType, result);
 }
 
+/// TODO:
+/// allow specifying comptime compress_opts if you want to save on program size
+/// like specify the compress opts it's allowed to use
 pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.mut), offset: w4.Vec2) !void {
     var fbs_in = std.io.fixedBufferStream(compressed_in);
     var reader = std.io.bitReader(.Little, fbs_in.reader());
@@ -111,7 +114,9 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
         switch(mode) {
             0 => {
                 const value = readBitsSmall(&reader, u2, 2) catch break :whlp;
-                const len_len = readBitsSmall(&reader, u1, 1) catch break :whlp;
+                const len_len = if(compress_opts.enable_long_repeat == 0) (
+                    0
+                ) else readBitsSmall(&reader, u1, 1) catch break :whlp;
                 const len = readBitsSmall(&reader, u14, switch(len_len) {
                     0 => compress_opts.small_repeat_len,
                     1 => 14,
@@ -141,15 +146,19 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
 }
 
 const CompressOpts = struct {
-    small_repeat_len: u4 = 9,
+    small_repeat_len: u4,
+    enable_long_repeat: u1,
 
     pub fn write(opts: CompressOpts, writer: anytype) !void {
         try writer.writeBits(opts.small_repeat_len, 4);
+        try writer.writeBits(opts.enable_long_repeat, 1);
     }
     pub fn read(reader: anytype) !CompressOpts {
         const small_repeat_len = try readBitsSmall(reader, u4, 4);
+        const enable_long_repeat = try readBitsSmall(reader, u1, 1);
         return CompressOpts{
             .small_repeat_len = small_repeat_len,
+            .enable_long_repeat = enable_long_repeat,
         };
     }
 };
@@ -188,6 +197,11 @@ fn compress2bppOpts(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2, c
             // u14
             while(true) {
                 if(total == std.math.maxInt(u14)) break;
+                if(compress_opts.enable_long_repeat == 0) {
+                    if(total == maxIntRuntime(compress_opts.small_repeat_len)) {
+                        break;
+                    }
+                }
                 const next = reader.readBitsNoEof(u2, 2) catch break;
                 if(next != value0) {
                     remains = next;
@@ -200,9 +214,12 @@ fn compress2bppOpts(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2, c
             try writer.writeBits(@as(u1, 0b0), 1);
             try writer.writeBits(value0, 2);
             if(total <= maxIntRuntime(compress_opts.small_repeat_len)) {
-                try writer.writeBits(@as(u1, 0), 1);
+                if(compress_opts.enable_long_repeat == 1) {
+                    try writer.writeBits(@as(u1, 0), 1);
+                }
                 try writer.writeBits(total, compress_opts.small_repeat_len);
             }else{
+                if(compress_opts.enable_long_repeat == 0) unreachable;
                 try writer.writeBits(@as(u1, 1), 1);
                 try writer.writeBits(total, 14);
             }
@@ -243,11 +260,16 @@ fn compress2bpp(alloc: std.mem.Allocator, data: []const u8, size: w4.Vec2) ![]co
     var res: ?[]const u8 = null;
     var small_repeat_len: u4 = 3;
     while(small_repeat_len < 14) : (small_repeat_len += 1) {
-        const value = try compress2bppOpts(alloc, data, size, .{
-            .small_repeat_len = small_repeat_len,
-        });
-        if(res == null or value.len < res.?.len) {
-            res = value;
+        for(w4.range(2)) |_, i| {
+            const enable_long_repeat = @intCast(u1, i);
+
+            const value = try compress2bppOpts(alloc, data, size, .{
+                .small_repeat_len = small_repeat_len,
+                .enable_long_repeat = enable_long_repeat,
+            });
+            if(res == null or value.len < res.?.len) {
+                res = value;
+            }
         }
     }
     return res.?;
