@@ -79,8 +79,9 @@ pub fn build(b: *std.build.Builder) void {
         // lib.stack_size = 0x100;
         lib.stack_size = 14752 / 2 - 32;
     }else{
-        lib.global_base = 6560;
-        lib.stack_size = 8192;
+        // lib.global_base = 6560;
+        // lib.stack_size = 8192;
+        lib.stack_size = 14752;
     }
     lib.export_symbol_names = &[_][]const u8{ "start", "update" };
     lib.install();

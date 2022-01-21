@@ -36,10 +36,7 @@ const w4 = @import("wasm4.zig");
 const w4i = @import("imgconv.zig");
 const colr = @import("color.zig");
 
-const dev_mode = switch(@import("builtin").mode) {
-    .Debug => true,
-    else => false,
-};
+var dev_mode = false;
 
 // var alloc_buffer: [1000]u8 = undefined;
 
@@ -65,8 +62,8 @@ var level_ul_y: i32 = undefined;
 var decompressed_image: ?w4.Tex(.mut) = null;
 
 fn decompressLevel(x: i32, y: i32, offset: w4.Vec2) void {
-    if(x < 0 or x >= chunk_count) unreachable;
-    if(y < 0 or y >= chunk_count) unreachable;
+    if(x < 0 or x >= chunk_count) return; // consider filling with 0b00
+    if(y < 0 or y >= chunk_count) return; // consider filling with 0b00
 
     const index = @intCast(usize, y * chunk_count + x);
 
@@ -421,6 +418,20 @@ fn updateWorld() void {
             }
         }
     }
+    
+    if(playerTouching(.{808, 1222}, .{816, 1222})) {
+        if(state.won_game) {
+            showNote("Unlocked fly with ESDF", "Also unlocked infinite dash");
+        }else{
+            showNote("You won or something", "Press ↓ to unlock cheats.");
+            if(use_key_this_frame) {
+                state.won_game = true;
+                state.won_game_time = state.game_frame;
+                game_screen = .computer;
+                successSound();
+            }
+        }
+    }
 
     if(playerTouching(.{373, 1248}, .{379, 1248})) {
         // showNote("Yuo died of fall damage :(", "That's the end. ↓ to return to surface.");
@@ -730,7 +741,7 @@ fn handleGameKeys() Vec2f {
     if(!w4.GAMEPAD1.button_2) {
         dash_key_used = false;
     }
-    if(state.dash_unlocked and !state.player.dash_used and w4.GAMEPAD1.button_2 and !dash_key_used) {
+    if(state.dash_unlocked and (!state.player.dash_used or state.won_game) and w4.GAMEPAD1.button_2 and !dash_key_used) {
         var dir = Vec2f{0, 0};
         if(w4.GAMEPAD1.button_left) {
             dir[w4.x] -= 1;
@@ -813,6 +824,16 @@ export fn update() void {
     }
     state.frame += 1;
 
+    if(delete_save_next_frame) {
+        state = .{};
+        delete_save_next_frame = false;
+    }
+
+    dev_mode = switch(@import("builtin").mode) {
+        .Debug => true,
+        else => state.won_game,
+    };
+
     defer mouse_last_frame = w4.MOUSE.*;
 
     use_key_this_frame = false;
@@ -835,13 +856,14 @@ export fn update() void {
 
     if(dev_mode and w4.GAMEPAD2.button_2) {
         // we'll make it so you can press r to bring up a pause menu while in game
-        state.game_screen = switch(state.game_screen) {
+        // ok I did that
+        game_screen = switch(game_screen) {
             .computer => .platformer,
             .platformer => .computer,
         };
     }
 
-    switch(state.game_screen) {
+    switch(game_screen) {
         .computer => {
             if(Computer.bg_transition_start != 0) {
                 level_ul_x = -10;
@@ -905,10 +927,22 @@ export fn update() void {
             rectULBR(.{0, 160 - 10}, .{160, 160}, 0b10);
             const button_text = "Programs";
             const button_width = measureText(button_text);
-            _ = button("Programs", .{2, 160 - 8});
             rectULBR(.{button_width + 6, 160 - 11}, .{button_width + 7, 160}, 0b01);
             rectULBR(.{button_width + 7, 160 - 11}, .{button_width + 8, 160}, 0b00);
             rectULBR(.{button_width + 8, 160 - 10}, .{button_width + 9, 160}, 0b01);
+
+            bring_to_front = null;
+
+            if(button("Programs", .{2, 160 - 8})) {
+                if(!closeWindow(.programs)) openWindow(.{
+                    .application = .programs,
+                    .ul = .{
+                        2,
+                        160 - Application.programs.windowSize()[w4.y] - 20 - 7,
+                    },
+                });
+            }
+
 
             // if we made each pixel 5 choices instead of 4, we could
             // render windows from back to front by using transparency
@@ -916,24 +950,37 @@ export fn update() void {
 
             var real_mouse_down_this_frame = mouse_down_this_frame;
             mouse_down_this_frame = false;
+            disable_highlight_color = false;
 
-            var bring_to_front: ?usize = null;
             for(w4.range(state.computer.windows.len)) |_, i_un| {
                 const i = state.computer.windows.len - i_un - 1;
                 const window = &state.computer.windows[i];
 
                 if(i == 0) {
                     mouse_down_this_frame = real_mouse_down_this_frame;
+                }else{
+                    disable_highlight_color = true;
                 }
-                renderWindow(window);
+                const clicking_window = renderWindow(window, real_mouse_down_this_frame, i);
                 if(i == 0) {
                     real_mouse_down_this_frame = mouse_down_this_frame;
                 }
+                disable_highlight_color = false;
+
+                if(clicking_window) bring_to_front = i;
             }
+            // if(bring_to_front == null) {
+            //     bring_to_front = for(state.computer.windows) |window, i| {
+            //         if(window.application != .none) {
+            //             break i;
+            //         }
+            //     } else null;
+            // }
 
             mouse_down_this_frame = real_mouse_down_this_frame;
+            disable_highlight_color = false;
 
-            if(bring_to_front) |btf_idx| {
+            if(bring_to_front) |btf_idx| if(btf_idx != 0) {
                 var swap = state.computer.windows[btf_idx];
                 state.computer.windows[btf_idx].application = .none;
 
@@ -946,11 +993,14 @@ export fn update() void {
                     window.* = swap;
                     swap = swc;
                 } else unreachable;
-            }
+            };
+            bring_to_front = undefined;
+
             // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
             // renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
         .platformer => {
+            state.game_frame += 1;
             updateLoaded();
             const world_scale = handleGameKeys();
             updateWorld();
@@ -968,6 +1018,32 @@ export fn update() void {
     //         }
     //     }
     // }
+}
+var bring_to_front: ?usize = null;
+var disable_highlight_color = false;
+
+pub fn globalValueRemap(_: w4.Vec2, value: u2) u2 {
+    if(disable_highlight_color and value == 0b11) return 0b01;
+    return value; 
+}
+
+fn closeWindow(app: Application) bool {
+    for(state.computer.windows) |*window| {
+        if(window.application == app) {
+            window.application = .none;
+            return true;
+        }
+    }
+    return false;
+}
+fn openWindow(new_window: WindowState) void {
+    const target_window = for(state.computer.windows) |window, i| {
+        if(window.application == .none) {
+            break i;
+        }
+    } else state.computer.windows.len - 1;
+    bring_to_front = target_window;
+    state.computer.windows[target_window] = new_window;
 }
 
 fn easeInOut(t: f32) f32 {
@@ -1004,14 +1080,16 @@ const all_backgrounds = [_]BackgroundImage{
 
 const Application = enum {
     settings,
-    platformer,
-    clicker,
+    game_timer,
+    programs,
+    reset,
     none,
     pub fn windowSize(app: Application) w4.Vec2 {
         return switch(app) {
             .settings => .{80, 40},
-            .clicker => .{100, 80},
-            .platformer => .{100, 80},
+            .game_timer => .{58, 19},
+            .programs => .{50, 60},
+            .reset => .{50, 20},
             .none => unreachable,
         };
     }
@@ -1067,20 +1145,95 @@ const Application = enum {
                     backgroundSwitcherSwoosh();
                 }
             },
-            .platformer => {},
-            .clicker => {},
+            .game_timer => {
+                const timer_v = if(state.won_game) (
+                    state.won_game_time
+                ) else (
+                    state.game_frame
+                );
+                const timer_f = @intToFloat(f32, timer_v);
+                const num_sec = @floor(timer_f / 60.0);
+
+                const num_w = measureNumber(num_sec);
+                // drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1 + 1}, 0b11); // maybe show when you win? idk
+                drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1}, 0b00);
+                const sec_txt = switch(state.won_game) {
+                    false => "sec",
+                    true => "sec (Won!)",
+                };
+                drawText(w4.ctx, sec_txt, .{x1 + 1 + num_w + 3, y1 + 1}, 0b00);
+
+                const btn_txt: []const u8 = switch(timer_v) {
+                    0 => "Start Game!",
+                    else => "Continue Game",
+                };
+                if(fancyButton(btn_txt, .{x1 + 1, y1 + 10})) {
+                    game_screen = .platformer;
+                }
+
+                // if it's 0, say "start game"
+                // if it's >0, say "continue"
+                // if you won, say something idk
+                // also add a restart game button with a confirm dialog
+                // (note: close the last window to open the dialog if needed)
+            },
+            .programs => {
+                if(button("Game", .{x1 + 1, y1 + 1})) {
+                    _ = closeWindow(.programs);
+                    openWindow(.{
+                        .application = .game_timer,
+                        .ul = w4.Vec2{20, 30},
+                    });
+                }
+                if(button("Settings", .{x1 + 1, y1 + 1 + 7})) {
+                    _ = closeWindow(.programs);
+                    openWindow(.{
+                        .application = .settings,
+                        .ul = w4.Vec2{50, 60},
+                    });
+                }
+                if(button("Reset", .{x1 + 1, y1 + 1 + (7 * 2)})) {
+                    _ = closeWindow(.programs);
+                    openWindow(.{
+                        .application = .reset,
+                        .ul = w4.Vec2{70, 70},
+                    });
+                }
+            },
+            .reset => {
+                if(fancyButton("Delete Save", .{x1 + 1, y1 + 1})) {
+                    delete_save_next_frame = true;
+                }
+                if(button("Cancel", .{x1 + 1, y1 + 10})) {
+                    _ = closeWindow(.reset);
+                }
+            },
             .none => unreachable,
         };
     }
     pub fn title(app: Application) []const u8 {
         return switch(app) {
             .settings => "Settings",
-            .platformer => "Platformer",
-            .clicker => "Clicker",
+            .game_timer => switch(state.won_game) {
+                false => "Timer",
+                true => "You won!",
+            },
+            .programs => "Programs",
+            .reset => "Reset",
             .none => unreachable,
         };
     }
 };
+var delete_save_next_frame = false;
+fn fancyButton(text: []const u8, ul: w4.Vec2) bool {
+    const btn_len = measureText(text);
+    const btn_offset = ul;
+    w4.ctx.rect(w4.Vec2{1, 0} + btn_offset, .{btn_len + 4, 1}, 0b11);
+    w4.ctx.rect(w4.Vec2{1, 7} + btn_offset, .{btn_len + 4, 1}, 0b01);
+    w4.ctx.rect(w4.Vec2{0, 1} + btn_offset, .{1, 6}, 0b01);
+    w4.ctx.rect(w4.Vec2{0 + btn_len + 5, 1} + btn_offset, .{1, 6}, 0b01);
+    return button(text, btn_offset + w4.Vec2{2, 1});
+}
 const WindowState = struct {
     application: Application,
     ul: w4.Vec2,
@@ -1098,8 +1251,8 @@ fn renderSettings() void {
     // - Photo by Peter Wormstetter on Unsplash
 }
 
-fn renderWindow(window: *WindowState) void {
-    if(window.application == .none) return;
+fn renderWindow(window: *WindowState, real_mouse_down_this_frame: bool, window_i: usize) bool {
+    if(window.application == .none) return false;
 
     // window drag handle 1/2
     const mpos = w4.MOUSE.pos();
@@ -1132,7 +1285,7 @@ fn renderWindow(window: *WindowState) void {
     // that might even use less memory than this
 
     // shadow
-    {var x: i32 = x1 - 2; while(x < x2 + 2) : (x += 1) {
+    if(window_i == 0) {var x: i32 = x1 - 2; while(x < x2 + 2) : (x += 1) {
         {var y: i32 = y1 + 5; while(y < y2 + 2) : (y += 1) {
             if((x == x1 - 2 or x == x2 + 2 - 1) and y == y1 + 5) continue;
             if((x == x1 - 2 or x == x2 + 2 - 1) and y >= y2 + 2 - 3) continue;
@@ -1182,7 +1335,7 @@ fn renderWindow(window: *WindowState) void {
 
     // window close button handle
     if(xbtn_click) {
-        // window.application = .none;
+        window.application = .none;
         // TODO: disabled for now
     }
 
@@ -1193,6 +1346,11 @@ fn renderWindow(window: *WindowState) void {
             mouse_down_this_frame = false;
         }
     }
+
+    if(pointWithin(mpos, ul, br - w4.Vec2{1, 1}) and real_mouse_down_this_frame) {
+        return true;
+    }
+    return false;
 }
 
 fn button(text: []const u8, ul: w4.Vec2) bool {
@@ -1535,14 +1693,18 @@ const Computer = struct {
     var bg_transition_start: u64 = 0;
     var bg_transition_dir: u1 = 0;
     desktop_background: u8 = 0,
-    windows: [2]WindowState = .{
+    windows: [3]WindowState = .{
         WindowState{
             .ul = w4.Vec2{20, 30},
-            .application = .settings,
+            .application = .game_timer,
         },
         WindowState{
-            .ul = w4.Vec2{50, 60},
-            .application = .settings,
+            .ul = undefined,
+            .application = .none,
+        },
+        WindowState{
+            .ul = undefined,
+            .application = .none,
         },
     },
 };
@@ -1554,6 +1716,7 @@ const Computer = struct {
 // but ideally we'd optimize settings for each chunk
 
 var state: State = undefined;
+var game_screen: GameScreen = .computer;
 
 const State = struct {
     // warning: does not have a consistent memory layout across compiler versions
@@ -1561,8 +1724,7 @@ const State = struct {
     const save_version: u8 = 1; // increase this to reset the save. must not be 0.
 
     frame: u64 = 0,
-
-    game_screen: GameScreen = .computer,
+    game_frame: u64 = 0,
 
     player: Player = .{},
     computer: Computer = .{},
@@ -1576,6 +1738,8 @@ const State = struct {
     dash_unlocked: bool = false,
     door_0_unlocked: bool = false,
     door_1_unlocked: bool = false,
+    won_game: bool = false,
+    won_game_time: u64 = 0,
 
     farm_0_purchased: bool = false,
     farm_0_coins: f32 = 0,
