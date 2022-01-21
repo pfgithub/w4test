@@ -62,8 +62,8 @@ var level_ul_y: i32 = undefined;
 var decompressed_image: ?w4.Tex(.mut) = null;
 
 fn decompressLevel(x: i32, y: i32, offset: w4.Vec2) void {
-    if(x < 0 or x >= chunk_count) return; // consider filling with 0b00
-    if(y < 0 or y >= chunk_count) return; // consider filling with 0b00
+    if(x < 0 or x >= chunk_count) unreachable;
+    if(y < 0 or y >= chunk_count) unreachable;
 
     const index = @intCast(usize, y * chunk_count + x);
 
@@ -94,6 +94,10 @@ fn ulLevelFloat() Vec2f {
 }
 
 fn reloadLevels() void {
+    if(level_ul_x < 0) level_ul_x = 0;
+    if(level_ul_y < 0) level_ul_y = 0;
+    if(level_ul_x + 1 >= chunk_count) level_ul_x = chunk_count - 2;
+    if(level_ul_y + 1 >= chunk_count) level_ul_y = chunk_count - 2;
     decompressLevel(level_ul_x, level_ul_y, .{0, 0});
     decompressLevel(level_ul_x + 1, level_ul_y, .{chunk_size, 0});
     decompressLevel(level_ul_x, level_ul_y + 1, .{0, chunk_size});
