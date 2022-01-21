@@ -998,6 +998,7 @@ const all_backgrounds = [_]BackgroundImage{
     BackgroundImage.from("Oranges", .{ 0x140e10, 0x563433, 0x4f4e5e, 0x9b4629 }),
     BackgroundImage.from("Browns", .{ 0x46311c, 0x9f664b, 0xcc956c, 0xe6cbba }),
     BackgroundImage.from("Greens", .{ 0x0f1606, 0x47591b, 0xa7bf1f, 0xbccf9d }),
+    BackgroundImage.from("Teals", .{ 0x214140, 0x095956, 0x2f8b76, 0x4ea7a1 }),
     BackgroundImage.from("Blues", .{ 0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3 }),
 };
 
@@ -1129,6 +1130,16 @@ fn renderWindow(window: *WindowState) void {
     // or just do the four corner thing where you blit
     // parts of an image and repeat the middle section
     // that might even use less memory than this
+
+    // shadow
+    {var x: i32 = x1 - 2; while(x < x2 + 2) : (x += 1) {
+        {var y: i32 = y1 + 5; while(y < y2 + 2) : (y += 1) {
+            if((x == x1 - 2 or x == x2 + 2 - 1) and y == y1 + 5) continue;
+            if((x == x1 - 2 or x == x2 + 2 - 1) and y >= y2 + 2 - 3) continue;
+            if(y == y2 + 2 - 1 and (x < x1 - 2 + 3 or x >= x2 + 2 - 3)) continue;
+            if(@mod(x, 2) == @mod(y, 2)) w4.ctx.set(.{x, y}, 0b00);
+        }}
+    }}
 
     // rounded corners
     w4.ctx.set(.{x1 + 1, y1 + 1}, 0b00);
