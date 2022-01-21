@@ -910,7 +910,43 @@ export fn update() void {
             rectULBR(.{button_width + 7, 160 - 11}, .{button_width + 8, 160}, 0b00);
             rectULBR(.{button_width + 8, 160 - 10}, .{button_width + 9, 160}, 0b01);
 
-            renderWindow(&state.computer.window);
+            // if we made each pixel 5 choices instead of 4, we could
+            // render windows from back to front by using transparency
+            // would take up more space in memory though and complicate code possibly
+
+            var real_mouse_down_this_frame = mouse_down_this_frame;
+            mouse_down_this_frame = false;
+
+            var bring_to_front: ?usize = null;
+            for(w4.range(state.computer.windows.len)) |_, i_un| {
+                const i = state.computer.windows.len - i_un - 1;
+                const window = &state.computer.windows[i];
+
+                if(i == 0) {
+                    mouse_down_this_frame = real_mouse_down_this_frame;
+                }
+                renderWindow(window);
+                if(i == 0) {
+                    real_mouse_down_this_frame = mouse_down_this_frame;
+                }
+            }
+
+            mouse_down_this_frame = real_mouse_down_this_frame;
+
+            if(bring_to_front) |btf_idx| {
+                var swap = state.computer.windows[btf_idx];
+                state.computer.windows[btf_idx].application = .none;
+
+                for(state.computer.windows) |*window| {
+                    if(window.application == .none) {
+                        window.* = swap;
+                        break;
+                    }
+                    const swc = window.*;
+                    window.* = swap;
+                    swap = swc;
+                } else unreachable;
+            }
             // renderWindow(.{50, 3}, .{148, 80}, "Hello, World!");
             // renderWindow(.{20, 30}, .{150, 120}, "Settings");
         },
@@ -1488,9 +1524,15 @@ const Computer = struct {
     var bg_transition_start: u64 = 0;
     var bg_transition_dir: u1 = 0;
     desktop_background: u8 = 0,
-    window: WindowState = .{
-        .ul = w4.Vec2{20, 30},
-        .application = .settings,
+    windows: [2]WindowState = .{
+        WindowState{
+            .ul = w4.Vec2{20, 30},
+            .application = .settings,
+        },
+        WindowState{
+            .ul = w4.Vec2{50, 60},
+            .application = .settings,
+        },
     },
 };
 // oh btw it looks like compression is doing extremely bad for those images
