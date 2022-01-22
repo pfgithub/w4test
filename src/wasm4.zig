@@ -13,6 +13,23 @@ pub fn texLen(size: Vec2) usize {
     return @intCast(usize, std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable);
 }
 
+const Color = u2;
+// const Color = enum {
+//     transparent,
+//     black,
+//     dark,
+//     light,
+//     white,
+// };
+
+pub const AnyTex = struct {
+    data: *const anyopaque,
+    get_fn: fn(data: *const anyopaque, pos: w4.Vec2) Color,
+    pub fn get(tex: AnyTex, pos: w4.Vec2) Color {
+        return tex.get_fn(tex.data, pos);
+    }
+};
+
 pub const Mbl = enum { mut, cons };
 pub fn Tex(comptime mbl: Mbl) type {
     return struct {
@@ -45,7 +62,19 @@ pub fn Tex(comptime mbl: Mbl) type {
             };
         }
 
-        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: Tex(.cons), src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
+        pub fn any(tex: *const Tex(mbl)) AnyTex {
+            return .{
+                .data = @ptrCast(*const anyopaque, tex),
+                .get_fn = (struct {
+                    fn f(v: *const anyopaque, pos: Vec2) Color {
+                        const ptr = @ptrCast(*const Tex(mbl), @alignCast(@alignOf(Tex(mbl)), v));
+                        return ptr.get(pos);
+                    }
+                }).f,
+            };
+        }
+
+        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
                 for (range(@intCast(usize, src_wh[x]))) |_, x_usz| {

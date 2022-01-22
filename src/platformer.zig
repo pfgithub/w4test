@@ -627,7 +627,7 @@ fn renderGame(world_scale: Vec2f) void {
         );
         w4.ctx.blit(
             camera_posi,
-            ui_texture,
+            ui_texture.any(),
             .{45 + anim_frame * 7, 43 + anim_cycle * 7},
             .{7, 7},
             .{0b00, 0b01, 4, 0b11},
@@ -1236,7 +1236,7 @@ const Application = enum {
                 , .{x1 + 4, y1 + 4}, 0b00);
                 w4.ctx.blit(
                     .{x1 + (100 / 2) - (30 / 2), y1 + 4 + 70},
-                    ui_texture,
+                    ui_texture.any(),
                     .{41, 1},
                     .{30, 11},
                     .{0, 1, 2, 3},
@@ -1508,7 +1508,7 @@ fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) 
     const tex_pos = w4.Vec2{char_pos[0] * 3 + 0, char_pos[1] * 5 + 13};
     tex.blit(
         pos,
-        ui_texture,
+        ui_texture.any(),
         tex_pos,
         .{3, 5},
         .{color, 4, 4, 4},
