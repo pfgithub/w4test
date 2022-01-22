@@ -366,7 +366,7 @@ fn updateWorld() void {
         autoClickArea(1);
     }
     if(playerTouching(.{755, 315}, .{775, 321})) {
-        autoClickArea(10);
+        autoClickArea(50);
     }
 
     if(playerTouching(.{124, 100}, .{130, 100})) {

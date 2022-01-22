@@ -20,6 +20,8 @@ check this: `wasm-objdump zig-out/lib/cart.wasm -x -j code`
 zig build -Drelease-small && ls -l zig-out/lib/cart.wasm && w4 bundle zig-out/lib/cart.wasm --html zig-out/lib/file.html
 ```
 
+note: also use wasm-opt
+
 ## TODO:
 
 - [x] finish up the game
