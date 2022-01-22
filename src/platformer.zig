@@ -1075,8 +1075,8 @@ const BackgroundImage = struct {
 };
 const content_file_raw = @embedFile("backgrounds/Nobody.png.w4i");
 const all_backgrounds = [_]BackgroundImage{
-    BackgroundImage.from("Oranges", .{ 0x140e10, 0x563433, 0x4f4e5e, 0x9b4629 }),
     BackgroundImage.from("Browns", .{ 0x46311c, 0x9f664b, 0xcc956c, 0xe6cbba }),
+    BackgroundImage.from("Oranges", .{ 0x140e10, 0x563433, 0x4f4e5e, 0x9b4629 }),
     BackgroundImage.from("Greens", .{ 0x0f1606, 0x47591b, 0xa7bf1f, 0xbccf9d }),
     BackgroundImage.from("Teals", .{ 0x214140, 0x095956, 0x2f8b76, 0x4ea7a1 }),
     BackgroundImage.from("Blues", .{ 0x4e5079, 0x656b9f, 0x9ca1d8, 0xc7caf3 }),
@@ -1087,6 +1087,7 @@ const Application = enum {
     game_timer,
     programs,
     reset,
+    credits,
     none,
     pub fn windowSize(app: Application) w4.Vec2 {
         return switch(app) {
@@ -1094,6 +1095,7 @@ const Application = enum {
             .game_timer => .{58, 19},
             .programs => .{50, 60},
             .reset => .{50, 20},
+            .credits => .{100, 100},
             .none => unreachable,
         };
     }
@@ -1196,7 +1198,14 @@ const Application = enum {
                         .ul = w4.Vec2{50, 60},
                     });
                 }
-                if(button("Reset", .{x1 + 1, y1 + 1 + (7 * 2)})) {
+                if(button("Credits", .{x1 + 1, y1 + 1 + (7 * 2)})) {
+                    _ = closeWindow(.programs);
+                    openWindow(.{
+                        .application = .credits,
+                        .ul = w4.Vec2{25, 10},
+                    });
+                }
+                if(button("Reset All", .{x1 + 1, y1 + 60 - 7})) {
                     _ = closeWindow(.programs);
                     openWindow(.{
                         .application = .reset,
@@ -1212,6 +1221,27 @@ const Application = enum {
                     _ = closeWindow(.reset);
                 }
             },
+            .credits => {
+                drawText(w4.ctx,
+                    \\Game by pfg
+                    \\  https://pfg.pw
+                    \\
+                    \\Built for the wasm4
+                    \\fantasy console
+                    \\  https://wasm4.org
+                    \\
+                    \\Programmed in Zig
+                    \\  https://ziglang.org
+                , .{x1 + 4, y1 + 4}, 0b00);
+                w4.ctx.blit(
+                    .{x1 + (100 / 2) - (30 / 2), y1 + 4 + 70},
+                    ui_texture,
+                    .{41, 1},
+                    .{30, 11},
+                    .{0, 1, 2, 3},
+                    .{1, 1},
+                );
+            },
             .none => unreachable,
         };
     }
@@ -1224,6 +1254,7 @@ const Application = enum {
             },
             .programs => "Programs",
             .reset => "Reset",
+            .credits => "Credits",
             .none => unreachable,
         };
     }
