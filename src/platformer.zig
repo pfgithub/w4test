@@ -1091,7 +1091,7 @@ const Application = enum {
     none,
     pub fn windowSize(app: Application) w4.Vec2 {
         return switch(app) {
-            .settings => .{80, 40},
+            .settings => .{80, 41},
             .game_timer => .{58, 19},
             .programs => .{50, 60},
             .reset => .{50, 20},
@@ -1111,6 +1111,7 @@ const Application = enum {
             .settings => {
                 drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
                 drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 22, y1 + 28}, 0b00);
+                drawText(w4.ctx, "Controls: Arrows, X, C", .{x1 + 1, y1 + 28 + 7}, 0b00);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
