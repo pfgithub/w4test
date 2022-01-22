@@ -522,6 +522,8 @@ pub fn main() !void {
                 opts.compress = true;
             }else if(std.mem.eql(u8, arg, "--detect-palette")) {
                 opts.detect_palette = true;
+            }else if(std.mem.eql(u8, arg, "--help")) {
+                opts.detect_palette = true;
             }else{
                 std.log.err("unknown arg", .{});
                 std.process.exit(1);
@@ -537,6 +539,24 @@ pub fn main() !void {
             std.process.exit(0);
         }
     }
+
+    if(src_file == null or dest_file == null) {
+        std.log.err("must specify in file and out file", .{});
+        std.process.exit(1);
+    }
+
+    const src_stat = try std.fs.cwd().statFile(src_file.?);
+    if(std.fs.cwd().statFile(dest_file.?)) |dest_stat| {
+        if(dest_stat.mtime >= src_stat.mtime) {
+            std.log.info("{s} is up to date. Note: does not detect if arguments have changed.", .{dest_file});
+            return;
+
+            // we should put a header in files specifying which
+            // arguments were specified
+            // and then always load files with the load fn which
+            // will be able to tell you if you used the args wrong
+        }
+    } else |_| {}
 
     var w_cint: c_int = 0;
     var h_cint: c_int = 0;
