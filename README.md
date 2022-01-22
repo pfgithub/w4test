@@ -1,3 +1,20 @@
+## Pl¢tfarmer
+
+A clicker/platformer game built for the [wasm4j](https://itch.io/jam/wasm4)am
+
+[![Play Game](src/platformer-thumbnail-playbtn.png)](https://pfg.itch.io/plctfarmer)
+
+https://pfg.itch.io/plctfarmer
+
+Source code is in `src/platformer.zig`
+
+Map is in `src/platformer.png`
+
+Texture compressor is in `src/imgconv.zig`
+
+<details>
+<summary>Notes</summary>
+
 build watcher: `w4 watch -n`
 
 make sure you aren't over the size limit:
@@ -34,3 +51,5 @@ note: also use wasm-opt
         to use this, it will make the zig output even smaller
   - [ ] see if we can go right the way up to the limit
   - [ ] oh yeah we could do that before release, why not
+
+</details>
