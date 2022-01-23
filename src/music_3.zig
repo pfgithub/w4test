@@ -305,7 +305,10 @@ export fn update() void {
         defer prev_note = current_note;
         var note_time = @intCast(u8, scale(note.on_for));
         if(note_time > 0) note_time -= 1;
-        w4.tone(.{.start = note.freq}, .{.sustain = note_time}, 100, .{.channel = .pulse1, .mode = .p25});
+        const mode: w4.ToneFlags.Mode = if(current_note >= 32) (
+            .p25
+        ) else .p12_5;
+        w4.tone(.{.start = note.freq}, .{.sustain = note_time}, 100, .{.channel = .pulse1, .mode = mode});
     }
 
     w4.PALETTE.* = .{0x000000, 0x555555, 0xaaaaaa, 0xffffff};
