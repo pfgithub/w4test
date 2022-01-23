@@ -12,18 +12,23 @@ Map is in `src/platformer.png`
 
 Texture compressor is in `src/imgconv.zig`
 
+How to build (dev):
+
+```
+zig build
+w4 run -n zig-out/lib/platformer.wasm
+```
+
 <details>
 <summary>Notes</summary>
 
-build watcher: `w4 watch -n`
-
 make sure you aren't over the size limit:
-`zig build -Drelease-small && ls -l zig-out/lib/cart.wasm`
+`zig build -Drelease-small && ls -l zig-out/lib/platformer.wasm`
 (maximum is 65,536 bytes)
 
 recommend also using wasm-opt -Oz because it got likt 50kb → 46kb
 
-check this: `wasm-objdump zig-out/lib/cart.wasm -x -j code`
+check this: `wasm-objdump zig-out/lib/platformer.wasm -x -j code`
 
 ## ingconv notes
 
@@ -34,7 +39,7 @@ check this: `wasm-objdump zig-out/lib/cart.wasm -x -j code`
 ## bundling
 
 ```
-zig build -Drelease-small && ls -l zig-out/lib/cart.wasm && w4 bundle zig-out/lib/cart.wasm --html zig-out/lib/file.html
+zig build -Drelease-small && ls -l zig-out/lib/platformer.wasm && w4 bundle zig-out/lib/platformer.wasm --html zig-out/lib/file.html
 ```
 
 note: also use wasm-opt

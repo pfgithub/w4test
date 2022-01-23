@@ -1,5 +1,24 @@
 const std = @import("std");
 
+fn w4lib(b: *std.build.Builder, name: []const u8, root_src: ?[]const u8) *std.build.LibExeObjStep {
+    const mode = b.standardReleaseOptions();
+
+    const lib = b.addSharedLibrary(name, root_src, .unversioned);
+    lib.setBuildMode(mode);
+    lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+    lib.import_memory = true;
+    lib.initial_memory = 65536;
+    lib.max_memory = 65536;
+    if(std.mem.eql(u8, root_src orelse "", "src/background_selector.zig")) {
+        lib.stack_size = 14752 / 2 - 32;
+    }else{
+        lib.stack_size = 14752;
+    }
+    lib.export_symbol_names = &[_][]const u8{ "start", "update" };
+
+    return lib;
+}
+
 pub fn build(b: *std.build.Builder) void {
     const imgconv = b.addExecutable("imgconv", "src/imgconv.zig");
     imgconv.setBuildMode(.ReleaseSafe);
@@ -62,39 +81,29 @@ pub fn build(b: *std.build.Builder) void {
         all_backgrounds.dependOn(&desktop_background.step);
     }
 
-    const mode = b.standardReleaseOptions();
+    const platformer = w4lib(b, "platformer", "src/platformer.zig");
+    platformer.step.dependOn(&platformer_image.step);
+    platformer.step.dependOn(&platformer_ui.step);
+    platformer.step.dependOn(all_backgrounds);
+    platformer.install();
 
-    const application = "src/platformer.zig";
+    const image_carousel = w4lib(b, "image-carousel", "src/background_selector.zig");
+    image_carousel.step.dependOn(&platformer_image.step);
+    image_carousel.step.dependOn(&platformer_ui.step);
+    image_carousel.step.dependOn(all_backgrounds);
+    image_carousel.install();
 
-    const lib = b.addSharedLibrary("cart", application, .unversioned);
-    lib.setBuildMode(mode);
-    lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
-    lib.step.dependOn(&platformer_image.step);
-    lib.step.dependOn(&platformer_ui.step);
-    lib.step.dependOn(all_backgrounds);
-    lib.import_memory = true;
-    lib.initial_memory = 65536;
-    lib.max_memory = 65536;
-    if(std.mem.eql(u8, application, "src/background_selector.zig")) {
-        // lib.stack_size = 0x100;
-        lib.stack_size = 14752 / 2 - 32;
-    }else{
-        // lib.global_base = 6560;
-        // lib.stack_size = 8192;
-        lib.stack_size = 14752;
-    }
-    lib.export_symbol_names = &[_][]const u8{ "start", "update" };
-    lib.install();
+    const music_3 = w4lib(b, "music-3", "src/music_3.zig");
+    music_3.install();
 
-
-    const lib_artifact = b.addInstallArtifact(lib);
-
-    const run_command = b.addSystemCommand(&.{
-        "w4",        "run", "zig-out/lib/cart.wasm",
-        "--no-open",
-    });
-    run_command.step.dependOn(&lib_artifact.step);
-
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_command.step);
+    // const lib_artifact = b.addInstallArtifact(lib);
+    //
+    // const run_command = b.addSystemCommand(&.{
+    //     "w4",        "run", "zig-out/lib/cart.wasm",
+    //     "--no-open",
+    // });
+    // run_command.step.dependOn(&lib_artifact.step);
+    //
+    // const run_step = b.step("run", "Run the app");
+    // run_step.dependOn(&run_command.step);
 }
