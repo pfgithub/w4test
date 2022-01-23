@@ -145,7 +145,7 @@ fn updateLoaded() void {
     }
 }
 
-fn getWorldPixelRaw(pos: w4.Vec2) u2 {
+fn getWorldPixelRaw(pos: w4.Vec2) w4.Color {
     const ul_pos = w4.Vec2{level_ul_x * chunk_size, level_ul_y * chunk_size};
 
     return level_tex.tex().get(pos - ul_pos);
@@ -155,19 +155,19 @@ fn pointWithin(pos: w4.Vec2, ul: w4.Vec2, br: w4.Vec2) bool {
     return @reduce(.And, pos >= ul)
     and @reduce(.And, pos <= br);
 }
-fn getWorldPixel(pos: w4.Vec2) u2 {
+fn getWorldPixel(pos: w4.Vec2) w4.Color {
     const res = getWorldPixelRaw(pos);
-    if(state.door_0_unlocked and res == 0b00 and pointWithin(pos, .{143, 56}, .{148, 103})) {
-        return 0b11;
+    if(state.door_0_unlocked and res == .black and pointWithin(pos, .{143, 56}, .{148, 103})) {
+        return .white;
     }
-    if(state.door_1_unlocked and res == 0b00 and pointWithin(pos, .{420, 361}, .{427, 383})) {
-        return 0b10;
+    if(state.door_1_unlocked and res == .black and pointWithin(pos, .{420, 361}, .{427, 383})) {
+        return .light;
     }
     if(state.dash_unlocked and pointWithin(pos, .{755, 630}, .{765, 640})) {
-        return 0b11;
+        return .white;
     }
     if(pos[w4.x] >= 158 and pos[w4.x] <= 1564 and pos[w4.y] < 0) {
-        return 0b11;
+        return .white;
     }
 
     return res;
@@ -193,7 +193,7 @@ fn protectedFromRain(pos: w4.Vec2) bool {
     return false;
 }
 
-fn getScreenPixel(pos_float: Vec2f) u2 {
+fn getScreenPixel(pos_float: Vec2f) w4.Color {
     var pos = w4.Vec2{
         @floatToInt(i32, @floor(pos_float[w4.x])),
         @floatToInt(i32, @floor(pos_float[w4.y])),
@@ -202,16 +202,16 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
     const res = getWorldPixel(pos);
 
     if(state.door_0_unlocked and pointWithin(pos, .{124, 92}, .{130, 100})) {
-        return 0b11;
+        return .white;
     }
     if(!state.door_0_unlocked and pos[w4.x] > 145) {
-        return 0b00;
+        return .black;
     }
     if(state.door_1_unlocked and pointWithin(pos, .{437, 383}, .{441, 383})) {
-        return 0b10;
+        return .light;
     }
     
-    if(res >= 0b10 and inRain(pos) and !protectedFromRain(pos)) {
+    if(res == .white and inRain(pos) and !protectedFromRain(pos)) {
         // we'll want to play a rain sound when this is visible on screen probably
         // and we can change the player step sound
 
@@ -241,17 +241,17 @@ fn getScreenPixel(pos_float: Vec2f) u2 {
         phase = @mod(phase, 1.0);
 
         if(@mod(y_float - phase, 1.0) <= 0.1) {
-            // if(y_float < phase + 0.05) return 0b01;
-            return 0b01;
+            // if(y_float < phase + 0.05) return .dark;
+            return .dark;
         }
     }
 
     if((-state.player.pos[w4.y] < 209 and state.player.pos[w4.x] > 170) or -state.player.pos[w4.y] < 147) {
         if(pointWithin(pos, .{44, 147}, .{170, 245})) {
-            return 0b00;
+            return .black;
         }
         if(pointWithin(pos, .{142, 209}, .{265, 314})) {
-            return 0b00;
+            return .black;
         }
     }
 
@@ -613,7 +613,7 @@ fn renderGame(world_scale: Vec2f) void {
     }
 
     const player_center = camera_posi + @divTrunc(state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1}, w4.Vec2{2, 2});
-    const dash_color = w4.ctx.get(player_center) == 0b10;
+    const dash_color = w4.ctx.get(player_center) == .light;
 
     if(false) {
         const anim_v = @intToFloat(f32, state.frame % 10000) / 5.0;
@@ -623,28 +623,28 @@ fn renderGame(world_scale: Vec2f) void {
         w4.ctx.rect(
             camera_posi + w4.Vec2{1, 1},
             w4.Vec2{5, 5},
-            0b10,
+            .light,
         );
         w4.ctx.blit(
             camera_posi,
             ui_texture.any(),
             .{45 + anim_frame * 7, 43 + anim_cycle * 7},
             .{7, 7},
-            .{0b00, 0b01, 4, 0b11},
+            .{.black, .dark, .transparent, .white},
             .{1, 1},
         );
     }else{
         w4.ctx.rect(
             camera_posi,
             state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1},
-            0b01,
+            .dark,
         );
     }
     if(state.player.dash_used) {
         w4.ctx.rect(
             camera_posi + w4.Vec2{2, 2},
             state.player.size * w4.Vec2{2, 2} - w4.Vec2{1, 1} - w4.Vec2{4, 4},
-            if(dash_color) 0b11 else 0b10,
+            if(dash_color) .white else .light,
         );
     }
     const dash_vel_f = state.player.vel_dash * Vec2f{8, -8};
@@ -668,24 +668,24 @@ fn renderGame(world_scale: Vec2f) void {
         w4.ctx.rect(
             numbox_ur - w4.Vec2{num_w + 4, 0},
             .{num_w + 4, 9},
-            0b00,
+            .black,
         );
         w4.ctx.rect(
             numbox_ur - w4.Vec2{num_w + 3, -1},
             .{num_w + 2, 7},
-            0b10,
+            .light,
         );
         drawNumber(
             w4.ctx,
             state.clicks,
             numbox_ur + w4.Vec2{-2 + -4, 2},
-            0b00,
+            .black,
         );
         drawText(
             w4.ctx,
             "¢",
             numbox_ur + w4.Vec2{-2 + -3, 2},
-            0b00,
+            .black,
         );
     }
 
@@ -694,24 +694,24 @@ fn renderGame(world_scale: Vec2f) void {
         w4.ctx.rect(
             .{2, 2},
             .{notew + 4, 15},
-            0b00,
+            .black,
         );
         w4.ctx.rect(
             .{3, 3},
             .{notew + 2, 13},
-            0b10,
+            .light,
         );
         drawText(
             w4.ctx,
             note.title,
             .{4, 4},
-            0b00,
+            .black,
         );
         drawText(
             w4.ctx,
             note.detail,
             .{4, 10},
-            0b01,
+            .dark,
         );
     }
 }
@@ -808,7 +808,7 @@ export fn update() void {
         w4.ctx.rect(
             .{0, 0},
             .{160, 160},
-            0b00,
+            .black,
         );
         w4.DRAW_COLORS.* = 0x2;
         w4.text(
@@ -950,14 +950,14 @@ export fn update() void {
                 }
             }
 
-            rectULBR(.{0, 160 - 12}, .{160, 160 - 11}, 0b00);
-            rectULBR(.{0, 160 - 11}, .{160, 160 - 10}, 0b11);
-            rectULBR(.{0, 160 - 10}, .{160, 160}, 0b10);
+            rectULBR(.{0, 160 - 12}, .{160, 160 - 11}, .black);
+            rectULBR(.{0, 160 - 11}, .{160, 160 - 10}, .white);
+            rectULBR(.{0, 160 - 10}, .{160, 160}, .light);
             const button_text = "Programs";
             const button_width = measureText(button_text);
-            rectULBR(.{button_width + 6, 160 - 11}, .{button_width + 7, 160}, 0b01);
-            rectULBR(.{button_width + 7, 160 - 11}, .{button_width + 8, 160}, 0b00);
-            rectULBR(.{button_width + 8, 160 - 10}, .{button_width + 9, 160}, 0b01);
+            rectULBR(.{button_width + 6, 160 - 11}, .{button_width + 7, 160}, .dark);
+            rectULBR(.{button_width + 7, 160 - 11}, .{button_width + 8, 160}, .black);
+            rectULBR(.{button_width + 8, 160 - 10}, .{button_width + 9, 160}, .dark);
 
             bring_to_front = null;
 
@@ -1042,7 +1042,7 @@ export fn update() void {
     // for(w4.range(160)) |_, y| {
     //     for(w4.range(160)) |_, x| {
     //         if(x % 2 == y % 2) {
-    //             w4.ctx.set(w4.Vec2{@intCast(i32, x), @intCast(i32, y)}, 0b00);
+    //             w4.ctx.set(w4.Vec2{@intCast(i32, x), @intCast(i32, y)}, .black);
     //         }
     //     }
     // }
@@ -1050,8 +1050,8 @@ export fn update() void {
 var bring_to_front: ?usize = null;
 var disable_highlight_color = false;
 
-pub fn globalValueRemap(_: w4.Vec2, value: u2) u2 {
-    if(disable_highlight_color and value == 0b11) return 0b01;
+pub fn globalValueRemap(_: w4.Vec2, value: w4.Color) w4.Color {
+    if(disable_highlight_color and value == .white) return .dark;
     return value; 
 }
 
@@ -1078,7 +1078,7 @@ fn easeInOut(t: f32) f32 {
     return @maximum(0.0, @minimum(1.0, t * t * (3.0 - 2.0 * t)));
 }
 
-fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
+fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: w4.Color) void {
     w4.ctx.rect(ul, br - ul, color);
 }
 
@@ -1133,9 +1133,9 @@ const Application = enum {
         _ = y2;
         return switch(app) {
             .settings => {
-                drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, 0b00);
-                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 22, y1 + 28}, 0b00);
-                drawText(w4.ctx, "Controls: Arrows, X, C", .{x1 + 1, y1 + 28 + 7}, 0b00);
+                drawText(w4.ctx, "Desktop Background", .{x1 + 1, y1 + 1}, .black);
+                drawText(w4.ctx, all_backgrounds[state.computer.desktop_background].attribution, .{x1 + 22, y1 + 28}, .black);
+                drawText(w4.ctx, "Controls: Arrows, X, C", .{x1 + 1, y1 + 28 + 7}, .black);
                 w4.DRAW_COLORS.* = 0x10;
                 w4.rect(.{x1 + 22, y1 + 7}, .{20, 20});
 
@@ -1186,13 +1186,13 @@ const Application = enum {
                 const num_sec = @floor(timer_f / 60.0);
 
                 const num_w = measureNumber(num_sec);
-                // drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1 + 1}, 0b11); // maybe show when you win? idk
-                drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1}, 0b00);
+                // drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1 + 1}, .white); // maybe show when you win? idk
+                drawNumber(w4.ctx, num_sec, .{x1 + 1 + num_w, y1 + 1}, .black);
                 const sec_txt = switch(state.won_game) {
                     false => "sec",
                     true => "sec (Won!)",
                 };
-                drawText(w4.ctx, sec_txt, .{x1 + 1 + num_w + 3, y1 + 1}, 0b00);
+                drawText(w4.ctx, sec_txt, .{x1 + 1 + num_w + 3, y1 + 1}, .black);
 
                 const btn_txt: []const u8 = switch(timer_v) {
                     0 => "Start Game!",
@@ -1257,13 +1257,13 @@ const Application = enum {
                     \\
                     \\Programmed in Zig
                     \\  https://ziglang.org
-                , .{x1 + 4, y1 + 4}, 0b00);
+                , .{x1 + 4, y1 + 4}, .black);
                 w4.ctx.blit(
                     .{x1 + (100 / 2) - (30 / 2), y1 + 4 + 70},
                     ui_texture.any(),
                     .{41, 1},
                     .{30, 11},
-                    .{0, 1, 2, 3},
+                    .{.black, .dark, .light, .white},
                     .{1, 1},
                 );
             },
@@ -1288,10 +1288,10 @@ var delete_save_next_frame = false;
 fn fancyButton(text: []const u8, ul: w4.Vec2) bool {
     const btn_len = measureText(text);
     const btn_offset = ul;
-    w4.ctx.rect(w4.Vec2{1, 0} + btn_offset, .{btn_len + 4, 1}, 0b11);
-    w4.ctx.rect(w4.Vec2{1, 7} + btn_offset, .{btn_len + 4, 1}, 0b01);
-    w4.ctx.rect(w4.Vec2{0, 1} + btn_offset, .{1, 6}, 0b01);
-    w4.ctx.rect(w4.Vec2{0 + btn_len + 5, 1} + btn_offset, .{1, 6}, 0b01);
+    w4.ctx.rect(w4.Vec2{1, 0} + btn_offset, .{btn_len + 4, 1}, .white);
+    w4.ctx.rect(w4.Vec2{1, 7} + btn_offset, .{btn_len + 4, 1}, .dark);
+    w4.ctx.rect(w4.Vec2{0, 1} + btn_offset, .{1, 6}, .dark);
+    w4.ctx.rect(w4.Vec2{0 + btn_len + 5, 1} + btn_offset, .{1, 6}, .dark);
     return button(text, btn_offset + w4.Vec2{2, 1});
 }
 const WindowState = struct {
@@ -1350,44 +1350,44 @@ fn renderWindow(window: *WindowState, real_mouse_down_this_frame: bool, window_i
             if((x == x1 - 2 or x == x2 + 2 - 1) and y == y1 + 5) continue;
             if((x == x1 - 2 or x == x2 + 2 - 1) and y >= y2 + 2 - 3) continue;
             if(y == y2 + 2 - 1 and (x < x1 - 2 + 3 or x >= x2 + 2 - 3)) continue;
-            if(@mod(x, 2) == @mod(y, 2)) w4.ctx.set(.{x, y}, 0b00);
+            if(@mod(x, 2) == @mod(y, 2)) w4.ctx.set(.{x, y}, .black);
         }}
     }}
 
     // rounded corners
-    w4.ctx.set(.{x1 + 1, y1 + 1}, 0b00);
-    w4.ctx.set(.{x2 - 2, y1 + 1}, 0b00);
-    w4.ctx.set(.{x1 + 1, y2 - 2}, 0b00);
-    w4.ctx.set(.{x2 - 2, y2 - 2}, 0b00);
+    w4.ctx.set(.{x1 + 1, y1 + 1}, .black);
+    w4.ctx.set(.{x2 - 2, y1 + 1}, .black);
+    w4.ctx.set(.{x1 + 1, y2 - 2}, .black);
+    w4.ctx.set(.{x2 - 2, y2 - 2}, .black);
 
     // top, left, bottom, right walls
-    rectULBR(.{x1 + 2, y1}, .{x2 - 2, y1 + 1}, 0b00);
-    rectULBR(.{x1 + 2, y2 - 1}, .{x2 - 2, y2}, 0b00);
-    rectULBR(.{x1, y1 + 2}, .{x1 + 1, y2 - 2}, 0b00);
-    rectULBR(.{x2 - 1, y1 + 2}, .{x2, y2 - 2}, 0b00);
+    rectULBR(.{x1 + 2, y1}, .{x2 - 2, y1 + 1}, .black);
+    rectULBR(.{x1 + 2, y2 - 1}, .{x2 - 2, y2}, .black);
+    rectULBR(.{x1, y1 + 2}, .{x1 + 1, y2 - 2}, .black);
+    rectULBR(.{x2 - 1, y1 + 2}, .{x2, y2 - 2}, .black);
 
     // shaded walls
-    rectULBR(.{x1 + 2, y1 + 1}, .{x2 - 2, y1 + 2}, 0b11);
-    rectULBR(.{x1 + 2, y2 - 2}, .{x2 - 2, y2 - 1}, 0b01);
-    rectULBR(.{x1 + 1, y1 + 2}, .{x1 + 2, y2 - 2}, 0b01);
-    rectULBR(.{x2 - 2, y1 + 2}, .{x2 - 1, y2 - 2}, 0b01);
+    rectULBR(.{x1 + 2, y1 + 1}, .{x2 - 2, y1 + 2}, .white);
+    rectULBR(.{x1 + 2, y2 - 2}, .{x2 - 2, y2 - 1}, .dark);
+    rectULBR(.{x1 + 1, y1 + 2}, .{x1 + 2, y2 - 2}, .dark);
+    rectULBR(.{x2 - 2, y1 + 2}, .{x2 - 1, y2 - 2}, .dark);
 
     // background
-    rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, 0b10);
+    rectULBR(.{x1 + 2, y1 + 2}, .{x2 - 2, y2 - 2}, .light);
 
     // titlebar separation
-    rectULBR(.{x1 + 1, y1 + 9}, .{x2 - 1, y1 + 10}, 0b01);
-    rectULBR(.{x1 + 2, y1 + 10}, .{x2 - 2, y1 + 11}, 0b11);
-    rectULBR(.{x2 - 12, y1 + 1}, .{x2 - 11, y1 + 9}, 0b01);
-    rectULBR(.{x2 - 11, y1 + 1}, .{x2 - 10, y1 + 10}, 0b00);
-    rectULBR(.{x2 - 10, y1 + 2}, .{x2 - 9, y1 + 9}, 0b01);
+    rectULBR(.{x1 + 1, y1 + 9}, .{x2 - 1, y1 + 10}, .dark);
+    rectULBR(.{x1 + 2, y1 + 10}, .{x2 - 2, y1 + 11}, .white);
+    rectULBR(.{x2 - 12, y1 + 1}, .{x2 - 11, y1 + 9}, .dark);
+    rectULBR(.{x2 - 11, y1 + 1}, .{x2 - 10, y1 + 10}, .black);
+    rectULBR(.{x2 - 10, y1 + 2}, .{x2 - 9, y1 + 9}, .dark);
 
     // === these should be rendered by the window ===
 
     // titlebar:
-    // [ text highlight ] // drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 4}, 0b11);
-    drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, 0b00);
-    // [ text highlight ] // drawText(w4.ctx, "x", .{x2 - 7, y1 + 4}, 0b11);
+    // [ text highlight ] // drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 4}, .white);
+    drawText(w4.ctx, window.application.title(), .{x1 + 3, y1 + 3}, .black);
+    // [ text highlight ] // drawText(w4.ctx, "x", .{x2 - 7, y1 + 4}, .white);
     const xbtn_click = button("x", .{x2 - 8, y1 + 2});
 
     // content
@@ -1420,9 +1420,9 @@ fn button(text: []const u8, ul: w4.Vec2) bool {
     const mpos = w4.MOUSE.pos();
     const hovering = pointWithin(mpos, ul, br - w4.Vec2{1, 1});
     if(hovering) {
-        rectULBR(ul, br, 0b11);
+        rectULBR(ul, br, .white);
     }
-    drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, 0b00);
+    drawText(w4.ctx, text, ul + w4.Vec2{1, 1}, .black);
 
     const clicked = hovering and mouse_down_this_frame;
     if(clicked) {
@@ -1528,18 +1528,18 @@ fn getCharPos2(char: u21) CharPos {
         else => return .{2, 3},
     }
 }
-fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: u2) void {
+fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: w4.Color) void {
     const tex_pos = w4.Vec2{char_pos[0] * 3 + 0, char_pos[1] * 5 + 13};
     tex.blit(
         pos,
         ui_texture.any(),
         tex_pos,
         .{3, 5},
-        .{color, 4, 4, 4},
+        .{color, .transparent, .transparent, .transparent},
         .{1, 1},
     );
 }
-fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
+fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: w4.Color) void {
     const c1 = getCharPos(char);
     renderCharPos(tex, c1, pos, color);
 
@@ -1547,7 +1547,7 @@ fn renderChar(tex: w4.Tex(.mut), char: u21, pos: w4.Vec2, color: u2) void {
     renderCharPos(tex, c2, pos + w4.Vec2{3, 0}, color);
 }
 
-fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: u2) void {
+fn drawText(tex: w4.Tex(.mut), text: []const u8, pos_ul: w4.Vec2, color: w4.Color) void {
     var view = std.unicode.Utf8View.initUnchecked(text);
     var iter = view.iterator();
     var i: i32 = 0;
@@ -1576,7 +1576,7 @@ fn measureNumber(num_initial: f32) i32 {
     }
     return res - 1;
 }
-fn drawNumber(tex: w4.Tex(.mut), num_initial: f32, ur_initial: w4.Vec2, color: u2) void {
+fn drawNumber(tex: w4.Tex(.mut), num_initial: f32, ur_initial: w4.Vec2, color: w4.Color) void {
     var num = num_initial;
     var ur = ur_initial;
     var iter = false;
@@ -1721,28 +1721,28 @@ const Player = struct {
                 @intCast(i32, x),
                 0,
             });
-            if(value == 0b00) return true;
+            if(value == .black) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.x]))) |_, x| {
             const value = getWorldPixel(pos + w4.Vec2{
                 @intCast(i32, x),
                 player.size[w4.y] - 1,
             });
-            if(value == 0b00) return true;
+            if(value == .black) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
             const value = getWorldPixel(pos + w4.Vec2{
                 0,
                 @intCast(i32, y + 1),
             });
-            if(value == 0b00) return true;
+            if(value == .black) return true;
         }
         for(w4.range(@intCast(usize, player.size[w4.y] - 2))) |_, y| {
             const value = getWorldPixel(pos + w4.Vec2{
                 player.size[w4.x] - 1,
                 @intCast(i32, y + 1),
             });
-            if(value == 0b00) return true;
+            if(value == .black) return true;
         }
         return false;
     }

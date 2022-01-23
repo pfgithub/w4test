@@ -173,7 +173,7 @@ export fn update() void {
         // w4.DRAW_COLORS.* = 0x11;
         const offset_scale = scale(0, 1, phase, 0, bar_width - extra_between_images, .constrain);
         // w4.rect(.{shx + 160 - @floatToInt(i32, offset_scale), 0}, .{bar_width, 160});
-        w4.ctx.rect(.{shx + 160 - @floatToInt(i32, offset_scale), 0}, .{bar_width, 160}, 0b00);
+        w4.ctx.rect(.{shx + 160 - @floatToInt(i32, offset_scale), 0}, .{bar_width, 160}, .black);
 
         w4.PALETTE.* = themeMix(
             all_backgrounds[bg_1].palette,
@@ -192,7 +192,7 @@ export fn update() void {
         const text_len = measureText(attrb);
         const left = @divFloor(160 - (text_len + 6), 2);
 
-        w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, 0b11);
+        w4.ctx.rect(.{left, 0}, .{text_len + 6, 7}, .white);
         w4.DRAW_COLORS.* = 0x10;
         drawText(attrb, .{left + 3, 1});
 
@@ -220,7 +220,7 @@ fn easeInOut(t: f32) f32 {
     return @maximum(0.0, @minimum(1.0, t * t * (3.0 - 2.0 * t)));
 }
 
-fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: u2) void {
+fn rectULBR(ul: w4.Vec2, br: w4.Vec2, color: w4.Color) void {
     w4.ctx.rect(ul, br - ul, color);
 }
 
@@ -301,9 +301,9 @@ fn button(text: []const u8, ul: w4.Vec2) bool {
     const mpos = w4.MOUSE.pos();
     const hovering = pointWithin(mpos, ul, br - w4.Vec2{1, 1});
     if(hovering) {
-        rectULBR(ul, br, 0b10);
+        rectULBR(ul, br, .light);
     }else{
-        rectULBR(ul, br, 0b11);
+        rectULBR(ul, br, .white);
     }
     drawText(text, ul + w4.Vec2{1, 1});
 

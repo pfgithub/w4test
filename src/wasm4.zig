@@ -13,14 +13,16 @@ pub fn texLen(size: Vec2) usize {
     return @intCast(usize, std.math.divCeil(i32, size[x] * size[y] * 2, 8) catch unreachable);
 }
 
-const Color = u2;
-// const Color = enum {
-//     transparent,
-//     black,
-//     dark,
-//     light,
-//     white,
-// };
+pub const Color = enum(u3) {
+    black = 0,
+    dark = 1,
+    light = 2,
+    white = 3,
+    transparent = 4,
+    pub fn fromInt(int: u2) Color {
+        return @intToEnum(Color, int);
+    }
+};
 
 pub const AnyTex = struct {
     data: *const anyopaque,
@@ -41,6 +43,26 @@ fn autoGetFn(comptime f: anytype) fn(data: *const anyopaque, pos: w4.Vec2) Color
         }
     }.f;
 }
+fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
+    return struct {
+        fn f(v: *const V) AnyTex {
+            return .{
+                .data = @ptrCast(*const anyopaque, v),
+                .get_fn = autoGetFn(V.get),
+            };
+        }
+    }.f;
+}
+
+const FilterRemap = struct {
+    base: AnyTex,
+    remap: [4]Color, // consider []const color rather than [4]color
+    pub fn get(v: FilterRemap, pos: w4.Vec2) Color {
+        const base = v.base.get(v.base, pos);
+        return v.remap[@enumToInt(base)];
+    }
+    pub const any = autoAnyFn(@This());
+};
 
 pub const Mbl = enum { mut, cons };
 pub fn Tex(comptime mbl: Mbl) type {
@@ -74,12 +96,7 @@ pub fn Tex(comptime mbl: Mbl) type {
             };
         }
 
-        pub fn any(tex: *const Tex(mbl)) AnyTex {
-            return .{
-                .data = @ptrCast(*const anyopaque, tex),
-                .get_fn = autoGetFn(get),
-            };
-        }
+        pub const any = autoAnyFn(@This());
 
         // rather than including remap_colors and scale here,
         // make remapColors(tex: AnyTex, .{0, 1, 2, 3})
@@ -89,21 +106,18 @@ pub fn Tex(comptime mbl: Mbl) type {
         // and then we can also get rid of rect() and replace it with blit(solid(0b11))
         //
         // note: if AnyTex had a size, we could remove src_ul and src_wh from here
-        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
+        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]Color, scale: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
                 for (range(@intCast(usize, src_wh[x]))) |_, x_usz| {
                     const xp = @intCast(i32, x_usz);
                     const pos = Vec2{ xp, yp };
 
-                    const value = remap_colors[src.get(src_ul + pos)];
-                    if (value <= std.math.maxInt(u2)) {
-                        dest.rect(pos * scale + dest_ul, scale, @intCast(u2, value));
-                    }
+                    dest.rect(pos * scale + dest_ul, scale, remap_colors[@enumToInt(src.get(src_ul + pos))]);
                 }
             }
         }
-        pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: u2) void {
+        pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: Color) void {
             for (range(std.math.lossyCast(usize, wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
                 for (range(std.math.lossyCast(usize, wh[x]))) |_, x_usz| {
@@ -113,20 +127,22 @@ pub fn Tex(comptime mbl: Mbl) type {
                 }
             }
         }
-        pub fn get(tex: Tex(mbl), pos: Vec2) u2 {
-            if (@reduce(.Or, pos < w4.Vec2{ 0, 0 })) return 0;
-            if (@reduce(.Or, pos >= tex.size)) return 0;
+        pub fn get(tex: Tex(mbl), pos: Vec2) Color {
+            if (@reduce(.Or, pos < w4.Vec2{ 0, 0 })) return .transparent;
+            if (@reduce(.Or, pos >= tex.size)) return .transparent;
             const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);
             const index = @intCast(usize, @divFloor(index_unscaled, 4));
             const byte_idx = @intCast(u3, (@mod(index_unscaled, 4)) * 2);
-            return @truncate(u2, tex.data[index] >> byte_idx);
+            return Color.fromInt(@truncate(u2, tex.data[index] >> byte_idx));
         }
-        pub fn set(tex: Tex(.mut), pos: Vec2, value_in: u2) void {
-            const value: u2 = if(@hasDecl(@import("root"), "globalValueRemap")) (
+        pub fn set(tex: Tex(.mut), pos: Vec2, value_in: Color) void {
+            const value_col: Color = if(@hasDecl(@import("root"), "globalValueRemap")) (
                 @import("root").globalValueRemap(pos, value_in)
             ) else (
                 value_in
             );
+            if(value_col == .transparent) return;
+            const value = @intCast(u2, @enumToInt(value_col));
             if (@reduce(.Or, pos < w4.Vec2{ 0, 0 })) return;
             if (@reduce(.Or, pos >= tex.size)) return;
             const index_unscaled = pos[w4.x] + (pos[w4.y] * tex.size[w4.x]);

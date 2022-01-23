@@ -140,17 +140,16 @@ pub fn decompress(compressed_in: []const u8, size_in: w4.Vec2, tex_out: w4.Tex(.
                     1 => 14,
                 }) catch break :whlp;
                 for(w4.range(len)) |_| {
-                    tex_out.set(px(size_in, written_count) + offset, value);
+                    tex_out.set(px(size_in, written_count) + offset, w4.Color.fromInt(value));
                     written_count += 1;
                 }
             },
             1 => {
-                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
-                written_count += 1;
-                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
-                written_count += 1;
-                tex_out.set(px(size_in, written_count) + offset, readBitsSmall(&reader, u2, 2) catch break :whlp);
-                written_count += 1;
+                for(w4.range(3)) |_| {
+                    const color = w4.Color.fromInt(readBitsSmall(&reader, u2, 2) catch break :whlp);
+                    tex_out.set(px(size_in, written_count) + offset, color);
+                    written_count += 1;
+                }
             },
         }
     }

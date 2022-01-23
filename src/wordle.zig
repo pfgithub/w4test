@@ -11,7 +11,7 @@ export fn update() void {
     // 0b10: yellow
     // 0b11: white
     w4.PALETTE.* = .{0x000000, 0x538d4e, 0xb59f3b, 0xFFFFFF};
-    w4.ctx.rect(.{0, 0}, .{160, 160}, 0b00);
+    w4.ctx.rect(.{0, 0}, .{160, 160}, .black);
     for(state.lines) |line, y_i| {
         const y_pos = @intCast(i32, y_i) * 19 + 3;
         for(line) |char, x_i| {
@@ -32,12 +32,12 @@ export fn update() void {
     w4.ctx.blit(.{30, 117}, ui_texture.any(), .{30, 117}, .{99, 41}, remapSet(.gray), .{1, 1});
 }
 
-fn remapSet(mode: LetterMode) [4]u3 {
+fn remapSet(mode: LetterMode) [4]w4.Color {
     return switch(mode) {
-        .none => .{0b00, 0b11, 0b11, 0b00},
-        .gray => .{0b00, 0b00, 0b11, 0b11},
-        .yellow => .{0b00, 0b11, 0b10, 0b10},
-        .green => .{0b00, 0b11, 0b01, 0b01},
+        .none => .{.black, .white, .white, .black},
+        .gray => .{.black, .black, .white, .white},
+        .yellow => .{.black, .white, .light, .light},
+        .green => .{.black, .white, .dark, .dark},
     };
 }
 
