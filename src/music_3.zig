@@ -63,131 +63,135 @@ const notemaker = struct {
     };
 
     const notes = [_]Note{
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "make "),
-        note(n.d, 3, 1, "it "),
-        note(n.e, 3, 1, "stop\n"),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "make "),
+        note(n.d, 4, 0, "it "),
+        note(n.e, 4, 0, "stop\n"),
 
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "rise "),
-        note(n.s, 3, 1, "?? "),
-        note(n.a, 3, 1, "??\n"),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "rise "),
+        note(n.s, 4, 0, "?? "),
+        note(n.a, 4, 0, "??\n"),
 
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "this "),
-        note(n.s, 3, 1, "is "),
-        note(n.a, 3, 1, "not\n"),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "this "),
+        note(n.s, 4, 0, "is "),
+        note(n.a, 4, 0, "not\n"),
 
-        note(n.l_f, 3, 1, "how "),
-        note(n.l_f, 3, 1, "it "),
-        note(n.s, 3, 1, "should "),
-        note(n.s, 3, 1, "be\n"),
+        note(n.l_f, 4, 0, "how "),
+        note(n.l_f, 4, 0, "it "),
+        note(n.s, 4, 0, "should "),
+        note(n.s, 4, 0, "be\n"),
 
-        note(n.a, 3, 1, "fo"),
-        note(n.a, 3, 1, "llow "),
-        note(n.s, 3, 1, "the "),
-        note(n.e, 3, 1, "stars\n"),
+        note(n.a, 4, 0, "fo"),
+        note(n.a, 4, 0, "llow "),
+        note(n.s, 4, 0, "the "),
+        note(n.e, 4, 0, "stars\n"),
 
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "?? "),
-        note(n.s, 3, 1, "?? "),
-        note(n.a, 3, 1, "??\n"),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "?? "),
+        note(n.s, 4, 0, "?? "),
+        note(n.a, 4, 0, "??\n"),
 
-        rest(3),
-        note(n.e, 4, 1, "recycle "),
-        note(n.s, 3, 1, "?? "),
-        note(n.a, 3, 1, "??\n"),
+        rest(1),
+        note(n.e, 2, 0, "re"),
+        note(n.e, 2, 0, "cy"),
+        note(n.e, 2, 0, "cle "),
+        note(n.s, 4, 0, "?? "),
+        note(n.a, 4, 0, "??\n"),
 
-        note(n.a, 3, 1, "do you "),
-        note(n.a, 3, 1, "see what "),
-        note(n.s, 3, 1, "i "),
-        note(n.s, 3, 1, "see\n"),
+        note(n.a, 2, 0, "do "),
+        note(n.a, 2, 0, "you "),
+        note(n.a, 2, 0, "see "),
+        note(n.a, 2, 0, "what "),
+        note(n.s, 4, 0, "i "),
+        note(n.s, 4, 0, "see\n"),
 
         rest(4), // modified
-        note(n.e, 3, 1, "the yellow "), // modified
-        note(n.d, 3, 1, "brick "), // modified
-        note(n.e, 3, 1, "road\n"),
+        note(n.e, 4, 0, "the yellow "), // modified
+        note(n.d, 4, 0, "brick "), // modified
+        note(n.e, 4, 0, "road\n"),
 
-        note(n.f, 3, 1, "is "),
-        note(n.e, 3, 1, "drenched "),
-        note(n.s, 3, 1, "in "),
-        note(n.a, 3, 1, "blood\n"),
-
-        rest(4),
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "?? "),
-        note(n.e, 3, 1, "??\n"),
-
-        note(n.f, 3, 1, "i "),
-        note(n.e, 3, 1, "know "),
-        note(n.a, 3, 1, "are "),
-        note(n.s, 3, 1, "drugged\n"),
-
-        note(n.d, 3, 1, "i "),
-        note(n.e, 3, 1, "watched "),
-        note(n.d, 3, 1, "him "),
-        note(n.e, 3, 1, "die\n"),
-
-        note(n.e, 3, 1, "and "),
-        note(n.e, 3, 1, "i "),
-        note(n.s, 3, 1, "just "),
-        note(n.a, 3, 1, "shrugged\n"),
+        note(n.f, 4, 0, "is "),
+        note(n.e, 4, 0, "drenched "),
+        note(n.s, 4, 0, "in "),
+        note(n.a, 4, 0, "blood\n"),
 
         rest(4),
-        note(n.e, 3, 1, "just "),
-        note(n.e, 3, 1, "another "),
-        note(n.e, 3, 1, "day (just) "),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "?? "),
+        note(n.e, 4, 0, "??\n"),
 
-        note(n.a, 3, 1, "for (another) "),
-        note(n.s, 3, 1, "me\n"), // (day
-        note(n.a, 3, 1, "for "),
-        note(n.s, 3, 1, "me\n"),
+        note(n.f, 4, 0, "i "),
+        note(n.e, 4, 0, "know "),
+        note(n.a, 4, 0, "are "),
+        note(n.s, 4, 0, "drugged\n"),
 
-        note(n.a, 3, 1, "for "),
-        note(n.s, 3, 1, "me\n"),
+        note(n.d, 4, 0, "i "),
+        note(n.e, 4, 0, "watched "),
+        note(n.d, 4, 0, "him "),
+        note(n.e, 4, 0, "die\n"),
 
-        note(n.a, 3, 1, "down the "),
-        note(n.a, 3, 1, "rabbit "),
-        note(n.a, 3, 1, "hole i'm "),
-        note(n.e, 3, 1, "in "),
-        note(n.a, 3, 1, "too "),
-        note(n.s, 3, 1, "deep "),
-        note(n.a, 3, 1, "too "),
-        note(n.s, 3, 1, "deep\n"),
+        note(n.e, 4, 0, "and "),
+        note(n.e, 4, 0, "i "),
+        note(n.s, 4, 0, "just "),
+        note(n.a, 4, 0, "shrugged\n"),
 
-        note(n.a, 3, 1, "if they "),
-        note(n.a, 3, 1, "offer "),
-        note(n.a, 3, 1, "you "),
-        note(n.e, 3, 1, "food "),
-        note(n.a, 3, 1, "don't "),
-        note(n.s, 3, 1, "eat "),
-        note(n.a, 3, 1, "don't "),
-        note(n.s, 3, 1, "eat\n"),
+        rest(4),
+        note(n.e, 4, 0, "just "),
+        note(n.e, 4, 0, "another "),
+        note(n.e, 4, 0, "day (just) "),
 
-        note(n.a, 3, 1, "if you "),
-        note(n.e, 3, 1, "wanna "),
-        note(n.e, 3, 1, "check "),
-        note(n.e, 3, 1, "in\n"),
+        note(n.a, 4, 0, "for (another) "),
+        note(n.s, 4, 0, "me\n"), // (day
+        note(n.a, 4, 0, "for "),
+        note(n.s, 4, 0, "me\n"),
 
-        note(n.e, 1, 1, "i "),
-        note(n.e, 1, 1, "won't "),
-        note(n.s, 1, 1, "stop "),
-        note(n.a, 1, 1, "you\n"),
+        note(n.a, 4, 0, "for "),
+        note(n.s, 4, 0, "me\n"),
+
+        note(n.a, 4, 0, "down the "),
+        note(n.a, 4, 0, "rabbit "),
+        note(n.a, 4, 0, "hole i'm "),
+        note(n.e, 4, 0, "in "),
+        note(n.a, 4, 0, "too "),
+        note(n.s, 4, 0, "deep "),
+        note(n.a, 4, 0, "too "),
+        note(n.s, 4, 0, "deep\n"),
+
+        note(n.a, 4, 0, "if they "),
+        note(n.a, 4, 0, "offer "),
+        note(n.a, 4, 0, "you "),
+        note(n.e, 4, 0, "food "),
+        note(n.a, 4, 0, "don't "),
+        note(n.s, 4, 0, "eat "),
+        note(n.a, 4, 0, "don't "),
+        note(n.s, 4, 0, "eat\n"),
+
+        note(n.a, 4, 0, "if you "),
+        note(n.e, 4, 0, "wanna "),
+        note(n.e, 4, 0, "check "),
+        note(n.e, 4, 0, "in\n"),
+
+        note(n.e, 2, 0, "i "),
+        note(n.e, 2, 0, "won't "),
+        note(n.s, 2, 0, "stop "),
+        note(n.a, 2, 0, "you\n"),
 
         rest(4),
         rest(4),
 
-        note(n.e, 1, 1, "i "),
-        note(n.e, 1, 1, "can "),
-        note(n.e, 1, 1, "take "),
-        note(n.e, 1, 1, "you "),
-        note(n.e, 1, 1, "there "),
-        note(n.e, 1, 1, "but "),
-        note(n.f, 3, 1, "you won't "),
-        note(n.a, 3, 1, "wanna "),
-        note(n.s, 3, 1, "leave "),
-        note(n.a, 3, 1, "wanna "),
-        note(n.s, 3, 1, "leave\n"),
+        note(n.e, 2, 0, "i "),
+        note(n.e, 2, 0, "can "),
+        note(n.e, 2, 0, "take "),
+        note(n.e, 2, 0, "you "),
+        note(n.e, 2, 0, "there "),
+        note(n.e, 2, 0, "but "),
+        note(n.f, 4, 0, "you won't "),
+        note(n.a, 4, 0, "wanna "),
+        note(n.s, 4, 0, "leave "),
+        note(n.a, 4, 0, "wanna "),
+        note(n.s, 4, 0, "leave\n"),
 
         rest(4),
         note(n.e, 2, 0, "ul"),
@@ -195,47 +199,47 @@ const notemaker = struct {
         rest(4),
         note(n.s, 2, 0, "via"),
         note(n.a, 2, 0, "lit "),
-        note(n.a, 1, 1, "that's "),
-        note(n.a, 1, 1, "my "),
-        note(n.a, 1, 1, "name "),
+        note(n.a, 2, 0, "that's "),
+        note(n.a, 2, 0, "my "),
+        note(n.a, 2, 0, "name "),
         note(n.a, 1, 0, "do "),
-        note(n.a, 1, 2, "you "),
-        note(n.s, 1, 1, "know "),
-        note(n.a, 1, 1, "why?\n"),
+        note(n.a, 3, 0, "you "),
+        note(n.s, 2, 0, "know "),
+        note(n.a, 2, 0, "why?\n"),
 
         rest(3),
         note(n.a, 1, 0, "be"),
-        note(n.a, 1, 1, "cause "),
+        note(n.a, 2, 0, "cause "),
         note(n.e, 2, 0, "ul"),
         note(n.a, 2, 0, "tra"),
         rest(4),
         note(n.d, 2, 0, "vio"),
         note(n.s, 2, 0, "let "),
-        note(n.a, 1, 1, "is "),
-        note(n.a, 1, 1, "in"),
-        note(n.s, 1, 1, "vis"),
-        note(n.s, 1, 1, "i"),
-        note(n.e, 3, 1, "ble "),
-        note(n.s, 3, 1, "light\n"),
+        note(n.a, 2, 0, "is "),
+        note(n.a, 2, 0, "in"),
+        note(n.s, 2, 0, "vis"),
+        note(n.s, 2, 0, "i"),
+        note(n.e, 4, 0, "ble "),
+        note(n.s, 4, 0, "light\n"),
 
         rest(3),
-        note(n.a, 1, 1, "through "),
-        note(n.s, 1, 1, "hard "),
-        note(n.s, 1, 1, "times "),
-        rest(2),
-        note(n.a, 1, 1, "my "),
-        note(n.s, 1, 1, "dark "),
-        note(n.s, 1, 1, "side "),
-        rest(2),
-        note(n.a, 1, 1, "co"),
-        note(n.s, 1, 1, "rrup"),
-        note(n.s, 1, 1, "ted "),
-        rest(2),
-        note(n.e, 1, 1, "my "),
-        note(n.s, 1, 1, "mind\n"),
+        note(n.a, 2, 0, "through "),
+        note(n.s, 2, 0, "hard "),
+        note(n.s, 3, 1, "times "),
+
+        note(n.a, 2, 0, "my "),
+        note(n.s, 2, 0, "dark "),
+        note(n.s, 3, 1, "side "),
+    
+        note(n.a, 2, 0, "co"),
+        note(n.s, 2, 0, "rrup"),
+        note(n.s, 3, 1, "ted "),
+    
+        note(n.e, 2, 0, "my "),
+        note(n.s, 2, 0, "mind\n"),
 
         rest(5),
-        // note(n.e, 3, 1, "??"),
+        // note(n.e, 4, 0, "??"),
     };
 };
 const notes = notemaker.notes;
@@ -250,8 +254,8 @@ var prev_note: usize = std.math.maxInt(usize);
 
 var playing = false;
 
-fn scale(time: u8) u64 {
-    return @as(u64, time) * frames_per_tick;
+fn scale(time: u8) u8 {
+    return time * frames_per_tick;
 }
 fn beatsToSec(ticks: u8) f32 {
     return (@intToFloat(f32, ticks) * beats_per_tick) * (1.0 / beats_per_second);
@@ -303,12 +307,12 @@ export fn update() void {
     const note = notes[current_note];
     if(playing and current_note != prev_note) {
         defer prev_note = current_note;
-        var note_time = @intCast(u8, scale(note.on_for));
+        var note_time = scale(note.on_for);
         if(note_time > 0) note_time -= 1;
-        const mode: w4.ToneFlags.Mode = if(current_note >= 32) (
+        const mode: w4.ToneFlags.Mode = if(current_note >= 36) (
             .p25
         ) else .p12_5;
-        w4.tone(.{.start = note.freq}, .{.sustain = note_time}, 100, .{.channel = .pulse1, .mode = mode});
+        w4.tone(.{.start = note.freq}, .{.sustain = note_time, .release = scale(1)}, 100, .{.channel = .pulse1, .mode = mode});
     }
 
     w4.PALETTE.* = .{0x000000, 0x555555, 0xaaaaaa, 0xffffff};
