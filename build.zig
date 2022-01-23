@@ -81,6 +81,10 @@ pub fn build(b: *std.build.Builder) void {
         all_backgrounds.dependOn(&desktop_background.step);
     }
 
+    const wordle_prep = b.addExecutable("wordle", "src/wordle_prep.zig");
+    wordle_prep.setBuildMode(.Debug);
+    const wordle_prep_run = wordle_prep.run();
+
     const platformer = w4lib(b, "platformer", "src/platformer.zig");
     platformer.step.dependOn(&platformer_image.step);
     platformer.step.dependOn(&platformer_ui.step);
@@ -95,6 +99,10 @@ pub fn build(b: *std.build.Builder) void {
 
     const music_3 = w4lib(b, "music-3", "src/music_3.zig");
     music_3.install();
+
+    const wordle = w4lib(b, "wordle", "src/wordle.zig");
+    wordle.step.dependOn(&wordle_prep_run.step);
+    wordle.install();
 
     // const lib_artifact = b.addInstallArtifact(lib);
     //
