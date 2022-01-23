@@ -30,8 +30,10 @@ pub const AnyTex = struct {
     pub fn get(tex: AnyTex, pos: w4.Vec2) Color {
         return tex.get_fn(tex.data, pos);
     }
-    // pub fn filter(Filter: type) Filter {}
-    // image.filter(Remap).any().filter(Scale).any()
+
+    pub fn filter(tex: AnyTex, comptime filter_fn: anytype, data: FilterDataArg(filter_fn)) AutoFilter(filter_fn) {
+        return AutoFilter(filter_fn).init(data, tex);
+    }
 };
 
 // remap_colors: [4]u3, scale: Vec2
@@ -63,8 +65,11 @@ pub fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
 
 pub const FilterRemap = AutoFilter(filterRemap);
 
+pub fn FilterDataArg(comptime filter: anytype) type {
+    return @typeInfo(@TypeOf(filter)).Fn.args[0].arg_type.?;
+}
 pub fn AutoFilter(comptime filter: anytype) type {
-    const DataTy = @typeInfo(@TypeOf(filter)).Fn.args[0].arg_type.?;
+    const DataTy = FilterDataArg(filter);
     return struct {
         base: AnyTex,
         data: DataTy,
