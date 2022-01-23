@@ -627,10 +627,9 @@ fn renderGame(world_scale: Vec2f) void {
         );
         w4.ctx.blit(
             camera_posi,
-            ui_texture.any(),
+            w4.FilterRemap.init(.{.black, .dark, .transparent, .white}, ui_texture.any()).any(),
             .{45 + anim_frame * 7, 43 + anim_cycle * 7},
             .{7, 7},
-            .{.black, .dark, .transparent, .white},
             .{1, 1},
         );
     }else{
@@ -1263,7 +1262,6 @@ const Application = enum {
                     ui_texture.any(),
                     .{41, 1},
                     .{30, 11},
-                    .{.black, .dark, .light, .white},
                     .{1, 1},
                 );
             },
@@ -1532,10 +1530,9 @@ fn renderCharPos(tex: w4.Tex(.mut), char_pos: CharPos, pos: w4.Vec2, color: w4.C
     const tex_pos = w4.Vec2{char_pos[0] * 3 + 0, char_pos[1] * 5 + 13};
     tex.blit(
         pos,
-        ui_texture.any(),
+        w4.FilterRemap.init(.{color, .transparent, .transparent, .transparent}, ui_texture.any()).any(),
         tex_pos,
         .{3, 5},
-        .{color, .transparent, .transparent, .transparent},
         .{1, 1},
     );
 }

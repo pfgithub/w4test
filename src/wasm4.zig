@@ -30,11 +30,13 @@ pub const AnyTex = struct {
     pub fn get(tex: AnyTex, pos: w4.Vec2) Color {
         return tex.get_fn(tex.data, pos);
     }
+    // pub fn filter(Filter: type) Filter {}
+    // image.filter(Remap).any().filter(Scale).any()
 };
 
 // remap_colors: [4]u3, scale: Vec2
 
-fn autoGetFn(comptime f: anytype) fn(data: *const anyopaque, pos: w4.Vec2) Color {
+pub fn autoGetFn(comptime f: anytype) fn(data: *const anyopaque, pos: w4.Vec2) Color {
     const ResTy = @typeInfo(@TypeOf(f)).Fn.args[0].arg_type.?;
     return struct {
         fn f(v: *const anyopaque, pos: Vec2) Color {
@@ -43,7 +45,7 @@ fn autoGetFn(comptime f: anytype) fn(data: *const anyopaque, pos: w4.Vec2) Color
         }
     }.f;
 }
-fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
+pub fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
     return struct {
         fn f(v: *const V) AnyTex {
             return .{
@@ -53,15 +55,27 @@ fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
         }
     }.f;
 }
+// fn autoFilter(comptime fn: anytype)
+// fn filterRemap(remap: [4]Color, tex: AnyTex, pos: w4.Vec2) Color {}
+// pub const FilterRemap = autoFilter(filterRemap);
+// tex.filter(FilterRemap, .{1, 2, 3, 4}).any();
+// TODO ^that
 
-const FilterRemap = struct {
+pub const FilterRemap = struct {
     base: AnyTex,
     remap: [4]Color, // consider []const color rather than [4]color
     pub fn get(v: FilterRemap, pos: w4.Vec2) Color {
-        const base = v.base.get(v.base, pos);
+        const base = v.base.get(pos);
         return v.remap[@enumToInt(base)];
     }
     pub const any = autoAnyFn(@This());
+
+    pub fn init(remap: [4]Color, base: AnyTex) FilterRemap {
+        return .{
+            .base = base,
+            .remap = remap,
+        };
+    }
 };
 
 pub const Mbl = enum { mut, cons };
@@ -106,14 +120,14 @@ pub fn Tex(comptime mbl: Mbl) type {
         // and then we can also get rid of rect() and replace it with blit(solid(0b11))
         //
         // note: if AnyTex had a size, we could remove src_ul and src_wh from here
-        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]Color, scale: Vec2) void {
+        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, scale: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
                 for (range(@intCast(usize, src_wh[x]))) |_, x_usz| {
                     const xp = @intCast(i32, x_usz);
                     const pos = Vec2{ xp, yp };
 
-                    dest.rect(pos * scale + dest_ul, scale, remap_colors[@enumToInt(src.get(src_ul + pos))]);
+                    dest.rect(pos * scale + dest_ul, scale, src.get(src_ul + pos));
                 }
             }
         }
