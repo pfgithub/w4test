@@ -85,6 +85,13 @@ pub fn build(b: *std.build.Builder) void {
     wordle_prep.setBuildMode(.Debug);
     const wordle_prep_run = wordle_prep.run();
 
+    const wordle_img = b.addSystemCommand(&.{
+        "zig-out/bin/imgconv",
+        "src/wordle-bg.png",
+        "src/wordle-bg.w4i",
+    });
+    wordle_img.step.dependOn(&imgconv_artifact.step);
+
     const platformer = w4lib(b, "platformer", "src/platformer.zig");
     platformer.step.dependOn(&platformer_image.step);
     platformer.step.dependOn(&platformer_ui.step);
@@ -102,6 +109,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const wordle = w4lib(b, "wordle", "src/wordle.zig");
     wordle.step.dependOn(&wordle_prep_run.step);
+    wordle.step.dependOn(&wordle_img.step);
     wordle.install();
 
     // const lib_artifact = b.addInstallArtifact(lib);

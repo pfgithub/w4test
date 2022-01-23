@@ -74,6 +74,12 @@ pub fn Tex(comptime mbl: Mbl) type {
             };
         }
 
+        // rather than including remap_colors and scale here,
+        // make remapColors(tex: AnyTex, .{0, 1, 2, 3})
+        // and scale(tex: AnyTex, .{2, 2})
+        // that would be neat I think
+        // measure to see how many more bytes of output this takes
+        // and then we can also get rid of rect() and replace it with blit(solid(0b11))
         pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
