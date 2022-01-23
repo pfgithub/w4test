@@ -803,6 +803,30 @@ var mouse_last_frame: w4.Mouse = w4.Mouse{};
 const test_program = false;
 
 export fn update() void {
+    if(saving_broken) {
+        w4.PALETTE.* = .{0x0000FF, 0xFFFFFF, 0x111111, 0x222222};
+        w4.ctx.rect(
+            .{0, 0},
+            .{160, 160},
+            0b00,
+        );
+        w4.DRAW_COLORS.* = 0x2;
+        w4.text(
+            \\
+            \\
+            \\
+            \\
+            \\      Error:
+            \\
+            \\ Game is unable to
+            \\  save. Make sure
+            \\  LocalStorage is
+            \\  enabled in your
+            \\  browser.
+        , .{0, 0});
+        return;
+    }
+
     if(test_program) {
         w4.ctx.set(.{80, 80}, w4.ctx.get(.{80, 80}) +% 1);
         return; // nothing to do;
@@ -1834,12 +1858,16 @@ const color_themes = [_][4]u32{
     .{ 0x46425e, 0x5b768d, 0xd17c7c, 0xf6c6a8 }, //     colorfire
 };
 
+var save_test = false;
+var saving_broken = false;
+
 const total_settings_size = 1 + @sizeOf(State);
 fn getState() State {
     var buffer = [_]u8{0} ** total_settings_size;
     const resv = w4.diskr(&buffer, buffer.len);
 
     if(buffer[0] != State.save_version or resv != total_settings_size) {
+        if(save_test) saving_broken = true;
         return .{};
     }else{
         return std.mem.bytesToValue(State, buffer[1..]);
@@ -1852,5 +1880,10 @@ fn saveState(nset: State) void {
     buffer[0] = State.save_version;
     std.mem.copy(u8, buffer[1..], &std.mem.toBytes(nset));
 
-    if(w4.diskw(&buffer, buffer.len) != total_settings_size) unreachable;
+    const wrote_size = w4.diskw(&buffer, buffer.len);
+    if(wrote_size != total_settings_size) {
+        saving_broken = true;
+    }
+
+    save_test = true;
 }
