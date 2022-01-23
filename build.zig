@@ -64,7 +64,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const mode = b.standardReleaseOptions();
 
-    const application = "src/platformer.zig";
+    const application = "src/music_3.zig";
 
     const lib = b.addSharedLibrary("cart", application, .unversioned);
     lib.setBuildMode(mode);
