@@ -81,7 +81,7 @@ const notemaker = struct {
         note(n.l_f, 3, 1, "how "),
         note(n.l_f, 3, 1, "it "),
         note(n.s, 3, 1, "should "),
-        note(n.s, 3, 1, "??\n"),
+        note(n.s, 3, 1, "be\n"),
 
         note(n.a, 3, 1, "fo"),
         note(n.a, 3, 1, "llow "),
