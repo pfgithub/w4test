@@ -61,22 +61,30 @@ pub fn autoAnyFn(comptime V: type) fn(tex: *const V) AnyTex {
 // tex.filter(FilterRemap, .{1, 2, 3, 4}).any();
 // TODO ^that
 
-pub const FilterRemap = struct {
-    base: AnyTex,
-    remap: [4]Color, // consider []const color rather than [4]color
-    pub fn get(v: FilterRemap, pos: w4.Vec2) Color {
-        const base = v.base.get(pos);
-        return v.remap[@enumToInt(base)];
-    }
-    pub const any = autoAnyFn(@This());
+pub const FilterRemap = AutoFilter(filterRemap);
 
-    pub fn init(remap: [4]Color, base: AnyTex) FilterRemap {
-        return .{
-            .base = base,
-            .remap = remap,
-        };
-    }
-};
+pub fn AutoFilter(comptime filter: anytype) type {
+    const DataTy = @typeInfo(@TypeOf(filter)).Fn.args[0].arg_type.?;
+    return struct {
+        base: AnyTex,
+        data: DataTy,
+        pub fn get(v: @This(), pos: w4.Vec2) Color {
+            return filter(v.data, v.base, pos);
+        }
+        pub const any = autoAnyFn(@This());
+
+        pub fn init(data: DataTy, base: AnyTex) @This() {
+            return .{
+                .base = base,
+                .data = data,
+            };
+        }
+    };
+}
+
+pub fn filterRemap(remap: [4]Color, base: AnyTex, pos: w4.Vec2) Color {
+    return remap[@enumToInt(base.get(pos))];
+}
 
 pub const Mbl = enum { mut, cons };
 pub fn Tex(comptime mbl: Mbl) type {
