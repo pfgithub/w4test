@@ -30,6 +30,18 @@ pub const AnyTex = struct {
     }
 };
 
+// remap_colors: [4]u3, scale: Vec2
+
+fn autoGetFn(comptime f: anytype) fn(data: *const anyopaque, pos: w4.Vec2) Color {
+    const ResTy = @typeInfo(@TypeOf(f)).Fn.args[0].arg_type.?;
+    return struct {
+        fn f(v: *const anyopaque, pos: Vec2) Color {
+            const ptr = @ptrCast(*const ResTy, @alignCast(@alignOf(ResTy), v));
+            return f(ptr.*, pos);
+        }
+    }.f;
+}
+
 pub const Mbl = enum { mut, cons };
 pub fn Tex(comptime mbl: Mbl) type {
     return struct {
@@ -65,12 +77,7 @@ pub fn Tex(comptime mbl: Mbl) type {
         pub fn any(tex: *const Tex(mbl)) AnyTex {
             return .{
                 .data = @ptrCast(*const anyopaque, tex),
-                .get_fn = (struct {
-                    fn f(v: *const anyopaque, pos: Vec2) Color {
-                        const ptr = @ptrCast(*const Tex(mbl), @alignCast(@alignOf(Tex(mbl)), v));
-                        return ptr.get(pos);
-                    }
-                }).f,
+                .get_fn = autoGetFn(get),
             };
         }
 
@@ -80,6 +87,8 @@ pub fn Tex(comptime mbl: Mbl) type {
         // that would be neat I think
         // measure to see how many more bytes of output this takes
         // and then we can also get rid of rect() and replace it with blit(solid(0b11))
+        //
+        // note: if AnyTex had a size, we could remove src_ul and src_wh from here
         pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, remap_colors: [4]u3, scale: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
