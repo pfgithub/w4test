@@ -21,14 +21,22 @@ export fn update() void {
 
             w4.ctx.blit(
                 .{x_pos, y_pos},
-                ui_texture.any().filter(w4.filterRemap, remapSet(.none)).any(),
-                .{52, 98},
+                ui_texture.any()
+                    .filter(w4.filterRemap, remapSet(.none)).any()
+                    .filter(w4.filterTranslate, w4.Vec2{52, 98}).any()
+                ,
                 .{17, 17},
-                .{1, 1},
             );
         }
     }
-    w4.ctx.blit(.{30, 117}, ui_texture.any().filter(w4.filterRemap, remapSet(.gray)).any(), .{30, 117}, .{99, 41}, .{1, 1});
+    w4.ctx.blit(
+        .{30, 117},
+        ui_texture.any()
+            .filter(w4.filterRemap, remapSet(.gray)).any()
+            .filter(w4.filterTranslate, w4.Vec2{30, 117}).any()
+        ,
+        .{99, 41},
+    );
 }
 
 fn remapSet(mode: LetterMode) [4]w4.Color {

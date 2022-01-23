@@ -90,6 +90,12 @@ pub fn AutoFilter(comptime filter: anytype) type {
 pub fn filterRemap(remap: [4]Color, base: AnyTex, pos: w4.Vec2) Color {
     return remap[@enumToInt(base.get(pos))];
 }
+pub fn filterTranslate(translate: Vec2, base: AnyTex, pos: w4.Vec2) Color {
+    return base.get(pos + translate);
+}
+pub fn filterScale(scale: Vec2, base: AnyTex, pos: w4.Vec2) Color {
+    return base.get(pos * scale);
+}
 
 pub const Mbl = enum { mut, cons };
 pub fn Tex(comptime mbl: Mbl) type {
@@ -133,14 +139,14 @@ pub fn Tex(comptime mbl: Mbl) type {
         // and then we can also get rid of rect() and replace it with blit(solid(0b11))
         //
         // note: if AnyTex had a size, we could remove src_ul and src_wh from here
-        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_ul: Vec2, src_wh: Vec2, scale: Vec2) void {
+        pub fn blit(dest: Tex(.mut), dest_ul: Vec2, src: AnyTex, src_wh: Vec2) void {
             for (range(@intCast(usize, src_wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);
                 for (range(@intCast(usize, src_wh[x]))) |_, x_usz| {
                     const xp = @intCast(i32, x_usz);
                     const pos = Vec2{ xp, yp };
 
-                    dest.rect(pos * scale + dest_ul, scale, src.get(src_ul + pos));
+                    dest.set(pos + dest_ul, src.get(pos));
                 }
             }
         }
