@@ -150,6 +150,7 @@ pub fn Tex(comptime mbl: Mbl) type {
                 }
             }
         }
+        /// consider removing this fn in favour of blit(solid(color))
         pub fn rect(dest: Tex(.mut), ul: Vec2, wh: Vec2, color: Color) void {
             for (range(std.math.lossyCast(usize, wh[y]))) |_, y_usz| {
                 const yp = @intCast(i32, y_usz);

@@ -24,6 +24,11 @@ fn compress(comptime data: []const u8, comptime res_len: ?usize) ![res_len orels
     var fbs = std.io.fixedBufferStream(&result);
     var writer = std.io.bitWriter(.Little, fbs.writer());
 
+    writer.writeBits(@as(u32, @divExact(data.len, 5)), 32) catch {
+        std.log.err("error; buffer too small. set res_len to null and run again", .{});
+        std.process.exit(1);
+    };
+
     // @setEvalBranchQuota(data.len * 100 + 10);
     for(data) |char| {
         writer.writeBits(char - 'a', 5) catch {
@@ -44,8 +49,8 @@ fn compress(comptime data: []const u8, comptime res_len: ?usize) ![res_len orels
 }
 
 pub fn main() !void {
-    const choices_compressed = try compress(@embedFile("wordle_choices"), 33304);
+    const choices_compressed = try compress(@embedFile("wordle_choices"), 33308);
     try std.fs.cwd().writeFile("src/wordle_choices.compressed", &choices_compressed);
-    const answers_compressed = try compress(@embedFile("wordle_answers"), 7235);
+    const answers_compressed = try compress(@embedFile("wordle_answers"), 7239);
     try std.fs.cwd().writeFile("src/wordle_answers.compressed", &answers_compressed);
 }
